@@ -2,7 +2,7 @@
 
 Trust roots live outside the checkout, installed by an independent administrator.
 Ed25519 signatures cover the complete canonical receipt, including artifact hashes.
-The last gate is deliberately impossible in Sprint 5.5.
+The last gate is deliberately impossible in Sprint 5.6.
 """
 import argparse
 import hashlib
@@ -17,7 +17,7 @@ from trust import canonical, digest, require_live
 from execution_modes import read_modes, MODES
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = 'bfbc4785d6e5d2e86f7fd70590cff6735f75062f'
+BASE = 'd3bd430ce543e0373c93579de78aa59bb524b87e'
 POLICY = dict(daily_cents=1000, task_cents=300, live_concurrency=1,
               deadline_seconds=2400, retries=2, auto_merge=False, deploy=False)
 GATES = {
@@ -27,7 +27,7 @@ GATES = {
     'broker': ('Software implementation required', ['worker_auth', 'task_binding', 'allowlists', 'limits', 'cancellation', 'revocation', 'usage_provenance']),
     'billing': ('Provider capability or billing guarantee required', ['daily_hard_cap', 'task_hard_cap', 'final_cost_attribution', 'delayed_charges', 'cross_midnight']),
     'server_qa': ('Independent security verification required', ['unit', 'analyzer', 'smoke', 'integration', 'syntax', 'diff', 'protected_files', 'assets']),
-    'github_apps': ('Operator credential/configuration required', ['installation', 'repository_scope', 'expiry', 'revocation', 'separate_identities', 'ambiguous_response']),
+    'github_apps': ('Operator credential/configuration required', ['installation', 'repository_scope', 'expiry', 'revocation', 'separate_identities', 'ambiguous_response', 'branch_protection']),
     'operator_identity': ('Operator credential/configuration required', ['authenticated_dispatch', 'independent_qa', 'authenticated_publish']),
     'security_review': ('Independent security verification required', ['host', 'vm', 'broker', 'controller', 'publication']),
     'vm_provider': ('Software implementation required', ['host_service', 'guest_image', 'signature_verification', 'vsock_binding']),
@@ -35,12 +35,17 @@ GATES = {
     'qa_assets': ('Operator credential/configuration required', ['locked_dependencies', 'native_abi', 'test_mongodb', 'reviewed_manifest']),
     'backup_restore': ('Independent security verification required', ['encrypted_offhost_backup', 'independent_restore', 'tamper_rejection', 'audit_preservation']),
     'legacy_state': ('Operator credential/configuration required', ['authoritative_ledger_inventory', 'migration_mapping', 'outstanding_holds']),
-    'subscription_authentication': ('Operator credential/configuration required', ['official_login', 'entitlement', 'pinned_client', 'headless_support']),
+    'subscription_authentication': ('Operator credential/configuration required', ['official_login', 'entitlement', 'pinned_client', 'headless_support', 'consent', 'state_validation', 'account_binding', 'expiry', 'scopes', 'refresh', 'revocation']),
+    'subscription_eligibility': ('Operator credential/configuration required', ['current_official_documentation', 'registered_application_or_official_client', 'deployment_eligibility', 'supported_protocol']),
+    'subscription_isolation': ('Independent security verification required', ['broker_secret_storage', 'credential_free_coding', 'credential_free_qa', 'no_artifact_or_log_tokens', 'no_local_untrusted_tools', 'bounded_vm_tool_transport']),
+    'subscription_execution_binding': ('Independent security verification required', ['authenticated_worker', 'single_execution', 'repository_and_source', 'model_allowlist', 'operation_allowlist', 'deadline', 'cancel_and_revoke', 'restart_fencing']),
+    'task_authorization': ('Operator credential/configuration required', ['explicit_task_dispatch', 'exact_source_sha', 'exact_candidate_sha_for_qa_and_publish', 'independent_qa_identity', 'separate_draft_publication']),
     'subscription_no_paid_usage': ('Independent security verification required', ['paid_refills_disabled', 'no_credit_purchase', 'no_api_fallback', 'account_controls']),
     'subscription_limits': ('Independent security verification required', ['exhaustion_detection', 'unknown_failure_stop', 'independent_deadline', 'cancellation']),
 }
 MODE_GATES = dict(billing='api_billing', broker='api_billing', subscription_authentication='chatgpt_subscription',
-                  subscription_no_paid_usage='chatgpt_subscription', subscription_limits='chatgpt_subscription')
+                  subscription_no_paid_usage='chatgpt_subscription', subscription_limits='chatgpt_subscription', subscription_eligibility='chatgpt_subscription',
+                  subscription_isolation='chatgpt_subscription', subscription_execution_binding='chatgpt_subscription')
 CONFIG_HASHES = {
     'execution-modes.json': '19a5a90aa817809e51d6a289aa50979538e4d0cfc24edc547b6f3ee26a976faa',
     'policy.json': 'b7fe1204ee691061fc6b917742f080a7d8952e4799fa155675e07e81bc9658c5',
@@ -153,7 +158,7 @@ def audit(evidence=None, trust_path=None, now=None, mode=None):
         checks.append(result)
     if selected == 'chatgpt_subscription' or mode_error:
         checks.append(dict(id='subscription_transport', mandatory=True, category='Software implementation required',
-                           status='blocked', reason='Official subscription execution is not integrated with credential-free isolated workers; custom broker is unsupported and token forwarding is prohibited'))
+                           status='blocked', reason='Live bridge blocked: current eligibility and supported external authentication are unverified; no reviewed credential-free VM tool transport. Offline harness is not deployment evidence'))
     # No signed evidence, config or CLI option can override this code gate.
     try:
         require_live()

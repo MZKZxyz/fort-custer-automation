@@ -1,0 +1,73 @@
+[
+  {
+    "schema": "LoginAccountParams.json",
+    "message": {
+      "type": "chatgpt"
+    }
+  },
+  {
+    "schema": "AccountLoginCompletedNotification.json",
+    "message": {
+      "loginId": "fixture-login",
+      "success": true,
+      "error": null
+    }
+  },
+  {
+    "schema": "TurnCompletedNotification.json",
+    "message": {
+      "threadId": "fixture-thread",
+      "turn": {
+        "id": "fixture-turn",
+        "items": [],
+        "status": "completed",
+        "error": null
+      }
+    }
+  },
+  {
+    "schema": "TurnCompletedNotification.json",
+    "message": {
+      "threadId": "fixture-thread",
+      "turn": {
+        "id": "fixture-turn",
+        "items": [],
+        "status": "failed",
+        "error": {
+          "message": "Synthetic failure",
+          "codexErrorInfo": "usageLimitExceeded",
+          "additionalDetails": null
+        }
+      }
+    }
+  },
+  {
+    "schema": "TurnCompletedNotification.json",
+    "message": {
+      "threadId": "fixture-thread",
+      "turn": {
+        "id": "fixture-turn",
+        "items": [],
+        "status": "failed",
+        "error": {
+          "message": "Synthetic failure",
+          "codexErrorInfo": "other",
+          "additionalDetails": null
+        }
+      }
+    }
+  },
+  {
+    "schema": "ErrorNotification.json",
+    "message": {
+      "threadId": "fixture-thread",
+      "turnId": "fixture-turn",
+      "willRetry": false,
+      "error": {
+        "message": "Synthetic quota failure",
+        "codexErrorInfo": "usageLimitExceeded",
+        "additionalDetails": null
+      }
+    }
+  }
+]

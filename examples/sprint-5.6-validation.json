@@ -1,0 +1,94 @@
+{
+  "sprint": "5.6",
+  "date": "2026-10-22",
+  "base": "d3bd430ce543e0373c93579de78aa59bb524b87e",
+  "base_tree": "e4361c7bde46de2a5589365b6368029a592526d1",
+  "source_retrieval": "GitHub connector; reconstructed git tree matched exactly",
+  "checks": [
+    {
+      "command": "python -m unittest discover -s tests -q",
+      "tests": 143,
+      "passed": 142,
+      "skipped": 1,
+      "skip_reason": "age binary unavailable; public-fixture encrypted restore remains unverified here"
+    },
+    {
+      "command": "python -O -m unittest discover -s tests -q",
+      "tests": 143,
+      "passed": 142,
+      "skipped": 1
+    },
+    {
+      "command": "python src/infrastructure.py lint",
+      "status": "passed"
+    },
+    {
+      "command": "python -m compileall -q src infra tests",
+      "status": "passed"
+    },
+    {
+      "command": "git diff --check",
+      "status": "passed"
+    },
+    {
+      "command": "python src/activation_rehearsal.py --evidence-dir /tmp/fc56-rehearsal",
+      "status": "passed",
+      "synthetic": true
+    },
+    {
+      "command": "local jsonschema validation of six pinned protocol fixture messages",
+      "status": "passed",
+      "not_a_full_conformance_suite": true
+    }
+  ],
+  "official_documentation": {
+    "status": "unavailable",
+    "urls": [
+      "https://developers.openai.com/siwc/quickstart",
+      "https://developers.openai.com/siwc/token-sharing-open-source/codex-app-server",
+      "https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations",
+      "https://developers.openai.com/api/docs/guides/workload-identity-federation",
+      "https://developers.openai.com/blog/codex-as-a-platform"
+    ],
+    "error": "URLError: Operation not permitted; curl could not reach configured proxy:8080",
+    "current_eligibility_established": false
+  },
+  "server_qa": {
+    "status": "blocked_not_run",
+    "lock_sha256": "031fcc3f511c1f4e90407fdb6e3514d5abfb56f1242a60c9b39b58493076c2ac",
+    "locked_dependencies": 173,
+    "assets_present": false,
+    "preparation_vm_available": false,
+    "qa_vm_available": false,
+    "docker_probe": "operation not permitted connecting to /var/run/docker.sock",
+    "mongodb_archive_checksum_verified": false,
+    "native_libraries_verified": false,
+    "production_database_access": false
+  },
+  "github": {
+    "main_protected": false,
+    "observation": "GitHub connector branches/main response 2026-10-22",
+    "url": "https://api.github.com/repos/MZKZxyz/fort-custer-automation/branches/main"
+  },
+  "live_bridge": "unimplemented_blocked",
+  "live_execution": false,
+  "oauth_login": false,
+  "live_app_server": false,
+  "credit_purchase": false,
+  "api_billing": false,
+  "resources_deployed": false,
+  "client_server_writes": false,
+  "operational_ledger_touched": false,
+  "readiness": {
+    "chatgpt_subscription": {
+      "ready": false,
+      "expected_exit_code": 1,
+      "blocked_mandatory": 21
+    },
+    "api_billing": {
+      "ready": false,
+      "expected_exit_code": 1,
+      "blocked_mandatory": 16
+    }
+  }
+}
