@@ -40,6 +40,9 @@ def plan(db_path, settings, backlog, now=None):
             raise ValueError('State integrity cannot be verified')
         if con.execute('SELECT version FROM metadata').fetchall() != [(1,)]:
             raise ValueError('Unsupported state version')
+        if con.execute("SELECT 1 FROM sqlite_master WHERE name='execution_tasks'").fetchone():
+            if con.execute('SELECT count(*) FROM execution_tasks').fetchone()[0]:
+                raise ValueError('Execution ledger active: use execution controller; advisory replanning is frozen')
         # Verify the complete ledger, including old-day active reservations.
         rows = con.execute('SELECT id, state, payload FROM tasks').fetchall()
         reservations = con.execute('SELECT task_id, day, cents FROM reservations').fetchall()
@@ -96,3 +99,4 @@ def markdown(report):
         lines += ['', f'## {title}', '']
         lines += [f"- {safe(t['id'])}: {safe(t.get('title', ''))} — {safe('; '.join(t[reasons]))}" for t in report[key]] or ['None.']
     return '\n'.join(lines) + '\n'
+

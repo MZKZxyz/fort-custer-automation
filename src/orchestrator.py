@@ -29,6 +29,11 @@ def validate(settings):
         type(settings['agents']['max_concurrent_coding']) is int and 0 <= settings['agents']['max_concurrent_coding'] <= 3,
         0 <= settings['budget']['daily_usd'] <= 10,
         0 < settings['budget']['max_task_reservation_usd'] <= settings['budget']['daily_usd'],
+        settings['budget']['max_task_reservation_usd'] <= 3,
+        type(settings['agents']['max_retries']) is int and 0 <= settings['agents']['max_retries'] <= 2,
+        0 < settings['agents']['max_task_runtime_minutes'] <= 40,
+        settings['execution']['network_access'] is False,
+        settings['security']['allow_agent_workflow_edits'] is False,
         settings['execution']['enabled'] is False,
         settings['release']['auto_merge'] is False,
         settings['release']['production_deploy'] is False,
@@ -132,3 +137,4 @@ if __name__ == '__main__':
     except Exception:
         # Do not print untrusted API payloads or credential-bearing exceptions.
         raise SystemExit('Planning failed closed. Verify configuration, GitHub read permissions and persistent state.') from None
+
