@@ -284,12 +284,12 @@ class OperationalTests(unittest.TestCase):
         receipt=dict(payload=payload,signature=base64.b64encode(signature.read_bytes()).decode())
         trust=dict(controller=dict(public_key=str(key),key_sha256=hashlib.sha256(key.read_bytes()).hexdigest()))
         with patch('readiness.protected_file',side_effect=Path):
-            verify_receipt('controller',receipt,trust,self.root,self.now,context)
+            verify_receipt('controller',receipt,trust,self.root.resolve(),self.now,context)
             log.write_text('tampered')
-            with self.assertRaises(ValueError):verify_receipt('controller',receipt,trust,self.root,self.now,context)
+            with self.assertRaises(ValueError):verify_receipt('controller',receipt,trust,self.root.resolve(),self.now,context)
             receipt['payload']['policy']['task_cents']=999
             with self.assertRaises((ValueError,subprocess.SubprocessError)):
-                verify_receipt('controller',receipt,trust,self.root,self.now,context)
+                verify_receipt('controller', receipt, trust, self.root.resolve(), self.now, context)
 
     @unittest.skipUnless(__import__('shutil').which('age'), 'age not installed; encrypted restore not verified')
     def test_real_age_encrypted_restore_with_public_upstream_fixture(self):
