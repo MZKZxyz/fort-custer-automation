@@ -1,0 +1,27 @@
+name: Verify planner dry run
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
+      - name: Offline simulation with isolated state
+        run: python src/orchestrator.py --initialize-state --source sample --db /tmp/simulation.db --out /tmp/simulation-plan.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dry-run-plan
+          path: |
+            /tmp/simulation-plan.json
+            /tmp/simulation-plan.md
+          if-no-files-found: error

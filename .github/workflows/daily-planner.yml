@@ -1,8 +1,13 @@
 name: Fort Custer daily advisory planner
 on:
   workflow_dispatch:
+    inputs:
+      initialize_state:
+        description: 'First run only: create a NEW planning ledger (never reset existing state)'
+        type: boolean
+        default: false
   schedule:
-    - cron: '17 16 * * *' # UTC; advisory schedule only
+    - cron: '17 16 * * *'
 permissions:
   contents: read
 concurrency:
@@ -11,16 +16,41 @@ concurrency:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      contents: write # ONLY the dedicated planning state branch is written
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
-      - run: python src/orchestrator.py --db /tmp/fort-custer-audit.db
+      - name: Restore authoritative state (fail closed)
+        env:
+          STATE_TOKEN: ${{ github.token }}
+          INITIALIZE: ${{ inputs.initialize_state || false }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "$INITIALIZE" == "true" ]]; then args+=(--initialize); fi
+          python src/remote_state.py restore --db /tmp/fort-custer.db --sha-file /tmp/state-sha "${args[@]}"
+      - name: Plan from real GitHub Issues (read only)
+        env:
+          GITHUB_TOKEN: ${{ secrets.BACKLOG_READ_TOKEN }}
+        run: python src/orchestrator.py --source github --db /tmp/fort-custer.db --out /tmp/plan.json
+      - name: Commit state with compare-and-swap (fail closed)
+        env:
+          STATE_TOKEN: ${{ github.token }}
+        run: python src/remote_state.py save --db /tmp/fort-custer.db --sha-file /tmp/state-sha
       - uses: actions/upload-artifact@v4
         with:
-          name: advisory-plan
-          path: examples/latest-report.json
-          retention-days: 14
+          name: daily-development-plan-${{ github.run_id }}
+          path: |
+            /tmp/plan.json
+            /tmp/plan.md
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish readable job summary
+        run: cat /tmp/plan.md >> "$GITHUB_STEP_SUMMARY"
