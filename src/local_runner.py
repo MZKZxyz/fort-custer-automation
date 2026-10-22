@@ -214,7 +214,7 @@ class LocalCLI:
             kinds[-1] != 'turn.completed' or kinds.count('thread.started') != 1 or kinds.count('turn.started') != 1):
             raise ValueError('Quota, authentication, protocol or usage failure; operator review required')
         usage = events[-1].get('usage')
-        if not isinstance(usage, dict) or set(usage) != {'input_tokens', 'cached_input_tokens', 'output_tokens'} or any(type(v) is not int or v < 0 for v in usage.values()):
+        if not isinstance(usage, dict) or not {'input_tokens', 'cached_input_tokens', 'output_tokens'} <= set(usage) or any(type(v) is not int or v < 0 for v in usage.values()):
             raise ValueError('Unknown usage telemetry')
         return {k:v for k,v in usage.items() if k in ('input_tokens', 'cached_input_tokens', 'output_tokens')}
 
@@ -294,7 +294,9 @@ class Runner:
         return r
 
     def inspect(self, run):
-        with self.tx() as db: return self.read(db, run)
+        # Read-only inspection must also work while publication holds its claim.
+        with sqlite3.connect(self.state/'local.sqlite', timeout=10) as db:
+            return self.read(db, run)
 
     def approve(self, run, response):
         with self.tx() as db:
@@ -385,25 +387,42 @@ class Runner:
             return report
 
 
+def terminal_challenge(challenge):
+    # macOS terminals do not support a seekable read/write stream.
+    with open('/dev/tty', 'r') as terminal_input, open('/dev/tty', 'w') as terminal_output:
+        if not terminal_input.isatty() or not terminal_output.isatty():
+            raise ValueError('Controlling terminal required')
+        terminal_output.write('Review the complete specification. Type '+challenge+'\n')
+        terminal_output.flush()
+        return terminal_input.readline().rstrip('\r\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--policy', required=True); parser.add_argument('--state', required=True)
     sub = parser.add_subparsers(dest='command', required=True)
     prep = sub.add_parser('prepare'); prep.add_argument('--issue', type=int, required=True)
     prep.add_argument('--repo', required=True); prep.add_argument('--issue-file', required=True)
-    for cmd in ('inspect', 'approve', 'execute'):
+    for cmd in ('inspect', 'approve', 'execute', 'publish-prepare', 'publish-inspect', 'publish-approve', 'publish-cancel'):
         sub.add_parser(cmd).add_argument('run')
     sub.add_parser('cancel')
     args = parser.parse_args(); runner = Runner(args.policy, args.state)
     if args.command == 'prepare':
         result = runner.prepare(args.issue, args.repo, json.loads(Path(args.issue_file).read_text()))
+    elif args.command.startswith('publish-'):
+        from src.local_publication import Publications
+        publisher = Publications(runner)
+        if args.command == 'publish-prepare': result = publisher.prepare(args.run)
+        elif args.command == 'publish-inspect': result = publisher.inspect(args.run)
+        elif args.command == 'publish-cancel': result = publisher.cancel(args.run)
+        else:
+            r = publisher.inspect(args.run); print(json.dumps(r, indent=2, ensure_ascii=True))
+            result = publisher.approve(args.run, terminal_challenge('PUBLISH '+r['binding']))
     elif args.command == 'inspect': result = runner.inspect(args.run)
     elif args.command == 'approve':
         r = runner.inspect(args.run); print(json.dumps(r, indent=2, ensure_ascii=True))
         # No command-line approval token and no noninteractive --yes path.
-        with open('/dev/tty', 'r+') as tty:
-            tty.write('Review the complete specification. Type APPROVE '+r['binding']+'\n'); tty.flush()
-            result = runner.approve(args.run, tty.readline().strip())
+        result = runner.approve(args.run, terminal_challenge('APPROVE '+r['binding']))
     elif args.command == 'execute': result = runner.execute(args.run)
     else: runner.cancel(); result = {'state': 'stopped'}
     print(json.dumps(result, indent=2, ensure_ascii=True))
