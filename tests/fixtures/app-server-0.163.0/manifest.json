@@ -1,0 +1,14 @@
+{
+  "cli": "0.163.0",
+  "origin": "codex app-server generate-json-schema --out TEMP",
+  "live_process_started": false,
+  "external_token_variant": "internal_only_do_not_use",
+  "files": {
+    "AccountLoginCompletedNotification.json": "d81e8821fd5a4a9ad118dfc3506ea156d32dcb18da388b336501bbc6a5ccb4a6",
+    "AccountRateLimitsUpdatedNotification.json": "37326ef0364007be0c8f92bf5cd228941b513f87266edd566d694409b5aa5b8b",
+    "ErrorNotification.json": "63518d8faae38b8eb73518d59b113f77603d238dd0cf36260b4232f381f43f8c",
+    "LoginAccountParams.json": "48fb9bea54d7e0890052653ac06737efb3200ba2261515b2c4014027f36bea3d",
+    "TurnCompletedNotification.json": "69413578ec3ecd02691424bdeb9d640c7244b4ca4c5c3ef26f69a2efe7c37db8",
+    "messages.json": "d3a20a7444f1c3d2a76836b387edbc0f738fef7d2c47a47a44504517c63d6a4a"
+  }
+}

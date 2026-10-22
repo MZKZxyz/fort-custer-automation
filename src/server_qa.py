@@ -44,6 +44,8 @@ def verify_assets(root, expected):
     and their shared library dependencies for the pinned QA image ABI.
     """
     root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError('QA asset root must be a real directory')
     manifest = expected['files']
     found = {}
     for path in root.rglob('*'):

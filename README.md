@@ -192,3 +192,18 @@ The VM interface is a contract integration, not a deployed microVM provider;
 the broker is synthetic-only. The frozen server #3 spec pins an exact commit/tree.
 Actual server subset results and full-suite blockers are recorded separately in
 `examples/sprint-5.5-validation.json`. No configuration enables live execution.
+
+## Sprint 5.6: offline subscription bridge preflight
+
+Live execution remains disabled. The [authentication investigation](docs/SPRINT-5.6-AUTH.md)
+documents the pinned app-server schema, unresolved official registration/eligibility
+and credential/tool-isolation blockers. The deterministic fake OAuth/app-server
+harness tests bounded approvals, lifecycle failures and durable restart holds
+without network or inference. It is not a production OAuth bridge.
+
+See [operator and full server QA preparation](docs/SPRINT-5.6-OPERATOR.md) and the
+[separate server issue #3 canary checklist](docs/FIRST-LIVE-CANARY-3.md).
+Run `python -m unittest discover -s tests -v`; readiness intentionally remains
+nonzero. Full real server QA is still blocked by missing independently verified
+MongoDB/native/npm assets and an isolated QA runtime. Neither offline tests nor
+configuration flags authorize live usage.
