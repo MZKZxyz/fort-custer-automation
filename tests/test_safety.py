@@ -105,6 +105,8 @@ class Safety(unittest.TestCase):
             later = plan(db, self.settings, tasks, self.now + timedelta(days=1))
             self.assertFalse(later['selected'])
             self.assertEqual(later['available_before_usd'], 7)
+            self.assertEqual(later['held_reservation_usd'], 3)
+            self.assertEqual(later['active_reservations'][0]['id'], tasks[0]['id'])
             with sqlite3.connect(db) as con:
                 self.assertEqual(con.execute('SELECT state FROM tasks').fetchall(), [('reserved',)])
                 con.execute('DELETE FROM reservations')
@@ -162,3 +164,39 @@ class Safety(unittest.TestCase):
                 raise HTTPError('url', 409, 'stale', {}, None)
             with self.assertRaises(HTTPError):
                 save(db, 'owner/repo', 'test', 'old-sha', request=request)
+
+
+class RemoteRoundTrip(unittest.TestCase):
+    def test_bootstrap_roundtrip_and_existing_state_guard(self):
+        from base64 import b64encode, b64decode
+        import hashlib
+        remote = {}
+        def request(method, path, token, payload=None):
+            if '/git/ref/heads/' in path:
+                if 'branch' not in remote:
+                    raise HTTPError('url', 404, 'missing', {}, None)
+                return {}
+            if method == 'POST':
+                remote['branch'] = True
+                return {}
+            if method == 'GET':
+                if 'content' not in remote:
+                    raise HTTPError('url', 404, 'missing', {}, None)
+                return dict(sha=remote['sha'], encoding='base64', content=remote['content'])
+            if method == 'PUT':
+                if payload.get('sha') != remote.get('sha'):
+                    raise HTTPError('url', 409, 'stale', {}, None)
+                remote['content'] = payload['content']
+                remote['sha'] = hashlib.sha1(b64decode(payload['content'])).hexdigest()
+                return {}
+            raise AssertionError('Unexpected operation')
+        with tempfile.TemporaryDirectory() as directory:
+            first, second, third = [Path(directory) / name for name in ('one', 'two', 'three')]
+            self.assertIsNone(restore(first, 'owner/repo', 'test', True, 'base', request))
+            save(first, 'owner/repo', 'test', None, request)
+            sha = restore(second, 'owner/repo', 'test', request=request)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            self.assertEqual(sha, remote['sha'])
+            with self.assertRaises(ValueError):
+                restore(third, 'owner/repo', 'test', True, 'base', request)
+            self.assertFalse(third.exists())

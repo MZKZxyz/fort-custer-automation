@@ -48,6 +48,8 @@ def plan(db_path, settings, backlog, now=None):
             raise ValueError('Task and reservation ledger disagree')
         if any(type(cents) is not int or cents <= 0 or cents != active[key]['reservation_cents'] for key, _, cents in reservations):
             raise ValueError('Invalid reservation ledger')
+        if any(task.get('id') != key or not isinstance(task.get('area'), str) for key, task in active.items()):
+            raise ValueError('Invalid active task identity or conflict area')
         if len(active) > settings['agents']['max_concurrent_coding']:
             raise ValueError('Active task ceiling exceeded')
         reserved_cents = sum(cents for _, _, cents in reservations)
@@ -59,7 +61,7 @@ def plan(db_path, settings, backlog, now=None):
                 raise ValueError('Daily plan already exists with different inputs; retain original plan')
             return json.loads(previous[1])
         report = schedule(settings, backlog, already_running=list(active.values()), already_reserved=reserved_cents / 100)
-        report.update(planning_day=day, generated_at=instant.isoformat(), input_fingerprint=fingerprint,
+        report.update(active_reservations=list(active.values()), held_reservation_usd=reserved_cents / 100, planning_day=day, generated_at=instant.isoformat(), input_fingerprint=fingerprint,
                       qa_status='not_run', release_status='not_approved')
         states = {t['id']: 'review' for t in report['review']}
         states.update({t['id']: 'blocked' for t in report['skipped']})
@@ -88,7 +90,9 @@ def markdown(report):
         lines.append(f"- {safe(task['id'])}: {safe(task.get('title', ''))} ({task['risk']}, ${task['reservation_cents']/100:.2f})")
     if not report['selected']:
         lines.append('None.')
+    lines += ['', '## Existing held reservations', '']
+    lines += [f"- {safe(t['id'])}: {safe(t['area'])} (${t['reservation_cents']/100:.2f})" for t in report.get('active_reservations', [])] or ['None.']
     for title, key, reasons in [('Requires your approval', 'review', 'review_reasons'), ('Deferred or blocked', 'skipped', 'reasons')]:
         lines += ['', f'## {title}', '']
-        lines += [f"- {safe(t['id'])}: {safe('; '.join(t[reasons]))}" for t in report[key]] or ['None.']
+        lines += [f"- {safe(t['id'])}: {safe(t.get('title', ''))} — {safe('; '.join(t[reasons]))}" for t in report[key]] or ['None.']
     return '\n'.join(lines) + '\n'
