@@ -129,3 +129,16 @@ This phase produces plans only. Trusted execution, metering, independent QA,
 reservation reconciliation, and protected human release gates remain future work.
 See [ROLLOUT.md](ROLLOUT.md) for the original phased rollout; this document supersedes
 its scaffold-only descriptions for ingestion and planning.
+
+
+## Sprint 5.2: offline execution simulation
+
+Run `python -m unittest discover -s tests -v` and `python src/simulate.py`.
+See [architecture, security, migration and one-agent canary requirements](docs/SPRINT-5.2.md)
+and the [synthetic execution report](examples/sprint-5.2-report.md).
+Live Codex invocation deliberately refuses execution. All release restrictions remain
+in force. The simulation is not a production sandbox or billed-spend guarantee.
+Advisory replanning freezes once execution tasks exist in the same ledger; use the
+execution controller to preserve accounting authority until unified live planning
+is separately reviewed. CI simulations use temporary state and never touch the
+operational state branch.
