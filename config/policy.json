@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default_risk": "L3",
+  "risk_levels": {
+    "L0": "documentation, tests, isolated developer tooling",
+    "L1": "low-impact internal code changes",
+    "L2": "UI and noncritical features",
+    "L3": "authentication, scoring, rewards, user data, migrations, API compatibility, credentials, infrastructure"
+  },
+  "always_human_review_paths": [".github/workflows/", "config/", "migrations/", "infra/", ".env", "package-lock.json"],
+  "sensitive_terms": ["auth", "jwt", "reward", "score", "leaderboard", "payment", "migration", "secret", "database", "production"],
+  "merge_requires_human": true,
+  "deploy_requires_human": true,
+  "required_checks": ["unit", "build", "browser-or-api", "independent-review"],
+  "missing_evidence_blocks": true
+}

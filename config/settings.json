@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "mode": "dry_run",
+  "timezone": "America/Los_Angeles",
+  "planning": {"frequency": "daily", "cron_utc": "17 16 * * *"},
+  "agents": {"max_concurrent_coding": 3, "max_retries": 2, "max_task_runtime_minutes": 40},
+  "budget": {"daily_usd": 10.0, "max_task_reservation_usd": 3.0, "fail_closed_if_metering_unavailable": true},
+  "release": {"auto_merge": false, "production_deploy": false, "human_approval_required": true},
+  "execution": {"enabled": false, "provider": "codex_sdk", "network_access": false},
+  "security": {"production_database_access": false, "allow_agent_workflow_edits": false},
+  "repositories": ["MZKZxyz/fort-custer-client", "MZKZxyz/fort-custer-server"]
+}

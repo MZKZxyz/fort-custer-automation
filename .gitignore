@@ -1,0 +1,6 @@
+state/
+examples/latest-report.json
+__pycache__/
+*.pyc
+.env
+.env.*

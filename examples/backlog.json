@@ -1,0 +1,7 @@
+[
+  {"id":"FC-201", "title":"Responsive calendar audit", "repo":"MZKZxyz/fort-custer-client", "area":"ui/calendar", "risk":"L2", "estimated_usd":2.5, "priority":90, "depends_on":[]},
+  {"id":"FC-202", "title":"Isolated maze analysis CLI", "repo":"MZKZxyz/fort-custer-server", "area":"tools/maze-analysis", "risk":"L0", "estimated_usd":2.75, "priority":85, "depends_on":[]},
+  {"id":"FC-203", "title":"Completion idempotency architecture", "repo":"MZKZxyz/fort-custer-server", "area":"api/completion", "risk":"L3", "estimated_usd":3.0, "priority":80, "depends_on":[]},
+  {"id":"FC-204", "title":"Calendar polish", "repo":"MZKZxyz/fort-custer-client", "area":"ui/calendar", "risk":"L2", "estimated_usd":2.0, "priority":70, "depends_on":["FC-201"]},
+  {"id":"FC-205", "title":"Test runtime cleanup", "repo":"MZKZxyz/fort-custer-client", "area":"test/infrastructure", "risk":"L0", "estimated_usd":3.0, "priority":60, "depends_on":[]}
+]
