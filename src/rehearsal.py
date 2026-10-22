@@ -112,7 +112,7 @@ def candidate(root,source,base,run):
     return mirror,commit
 
 
-def run_rehearsal():
+def run_rehearsal(*, worker_hook=None, evidence_dir=None):
     from orchestrator import read_json, ROOT
     with tempfile.TemporaryDirectory(prefix='sprint53-') as root:
         db=Path(root)/'state.db'; initialize(db)
@@ -125,6 +125,7 @@ def run_rehearsal():
         request=ledger.request(spec)
         execution=ledger.dispatch(spec,issuer.grant('dispatch',request,now))
         ledger.claim(execution,'coding:synthetic')
+        worker_evidence = worker_hook(ledger, execution, spec, issuer, now) if worker_hook else None
         mirror,commit=candidate(root,source,base,execution)
         usage=parse_events([canonical(dict(type='thread.started',thread_id='synthetic-thread')),
                             canonical(dict(type='turn.completed',usage=dict(input_tokens=100,cached_input_tokens=0,output_tokens=20)))],execution,'synthetic-model','synthetic-v1')
@@ -142,7 +143,12 @@ def run_rehearsal():
         with ledger.tx() as con:
             events=[r[0] for r in con.execute('SELECT event FROM s53_events ORDER BY id')]
             holds=con.execute('SELECT count(*) FROM reservations').fetchone()[0]
-        return dict(synthetic=True,live_execution=False,selected=len(plan['selected']),
+        if evidence_dir is not None:
+            from ledger_backup import snapshot
+            import shutil
+            snapshot(db, Path(evidence_dir)/'synthetic-ledger.db')
+            shutil.copytree(mirror, Path(evidence_dir)/'synthetic-candidate.git')
+        return dict(synthetic=True,live_execution=False,selected=len(plan['selected']),worker_evidence=worker_evidence,
                     events=events,qa_tests=report['tests'],draft=pr['draft'],
                     original_planning_holds_preserved=holds,
                     billed_dollars=None,synthetic_final_cents=25)

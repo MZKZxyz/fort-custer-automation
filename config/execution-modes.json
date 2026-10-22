@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "selected": "chatgpt_subscription",
+  "automatic_mode_switch": false,
+  "modes": {
+    "chatgpt_subscription": {
+      "live_enabled": false,
+      "authentication": "official_codex_chatgpt_login",
+      "custom_model_broker": false,
+      "automatic_credit_purchase": false,
+      "paid_refills": false,
+      "api_billing_fallback": false,
+      "quota_is_per_task_cutoff": false,
+      "exhaustion_action": "stop_and_require_operator",
+      "credential_transport": "unimplemented_blocked"
+    },
+    "api_billing": {
+      "live_enabled": false,
+      "authentication": "api_key_in_trusted_broker_only",
+      "daily_cents": 1000,
+      "task_reservation_cents": 300,
+      "hard_cap_guarantee_required": true,
+      "authoritative_reconciliation_required": true,
+      "fail_closed": true
+    }
+  }
+}

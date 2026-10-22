@@ -1,0 +1,323 @@
+{
+  "schema": 2,
+  "ready": false,
+  "live_execution": false,
+  "execution_mode": "chatgpt_subscription",
+  "api_financial_policy_applies": false,
+  "subscription_usage_is_billing": false,
+  "execution_config": {
+    "schema": 1,
+    "selected": "chatgpt_subscription",
+    "automatic_mode_switch": false,
+    "modes": {
+      "chatgpt_subscription": {
+        "live_enabled": false,
+        "authentication": "official_codex_chatgpt_login",
+        "custom_model_broker": false,
+        "automatic_credit_purchase": false,
+        "paid_refills": false,
+        "api_billing_fallback": false,
+        "quota_is_per_task_cutoff": false,
+        "exhaustion_action": "stop_and_require_operator",
+        "credential_transport": "unimplemented_blocked"
+      },
+      "api_billing": {
+        "live_enabled": false,
+        "authentication": "api_key_in_trusted_broker_only",
+        "daily_cents": 1000,
+        "task_reservation_cents": 300,
+        "hard_cap_guarantee_required": true,
+        "authoritative_reconciliation_required": true,
+        "fail_closed": true
+      }
+    }
+  },
+  "context": {
+    "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+    "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+    "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+    "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+    "execution_mode": "chatgpt_subscription",
+    "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+    "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
+  },
+  "policy": {
+    "daily_cents": 1000,
+    "task_cents": 300,
+    "live_concurrency": 1,
+    "deadline_seconds": 2400,
+    "retries": 2,
+    "auto_merge": false,
+    "deploy": false
+  },
+  "checks": [
+    {
+      "id": "policy_integrity",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "verified",
+      "reason": "Configuration matches reviewed unchanged spending/security policy"
+    },
+    {
+      "id": "execution_configuration",
+      "mandatory": true,
+      "category": "Operator credential/configuration required",
+      "status": "verified",
+      "reason": "Both reviewed execution modes disabled; no automatic switch"
+    },
+    {
+      "id": "controller",
+      "mandatory": true,
+      "category": "Infrastructure deployment required",
+      "status": "blocked",
+      "required_observations": [
+        "ledger",
+        "backup_restore",
+        "service_identity",
+        "immutable_config",
+        "crash_recovery"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "worker",
+      "mandatory": true,
+      "category": "Infrastructure deployment required",
+      "status": "blocked",
+      "required_observations": [
+        "vm_isolation",
+        "deny_egress",
+        "no_host_mounts",
+        "no_credentials",
+        "signed_request",
+        "scope",
+        "cleanup"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "watchdog",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "blocked",
+      "required_observations": [
+        "controller_crash",
+        "worker_crash",
+        "deadline",
+        "kill_switch",
+        "watchdog_failure"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "broker",
+      "mandatory": false,
+      "category": "Software implementation required",
+      "status": "not_applicable",
+      "required_observations": [
+        "worker_auth",
+        "task_binding",
+        "allowlists",
+        "limits",
+        "cancellation",
+        "revocation",
+        "usage_provenance"
+      ],
+      "execution_mode": "api_billing",
+      "reason": "Required for the other execution mode; not satisfied or waived"
+    },
+    {
+      "id": "billing",
+      "mandatory": false,
+      "category": "Provider capability or billing guarantee required",
+      "status": "not_applicable",
+      "required_observations": [
+        "daily_hard_cap",
+        "task_hard_cap",
+        "final_cost_attribution",
+        "delayed_charges",
+        "cross_midnight"
+      ],
+      "execution_mode": "api_billing",
+      "reason": "Required for the other execution mode; not satisfied or waived"
+    },
+    {
+      "id": "server_qa",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "blocked",
+      "required_observations": [
+        "unit",
+        "analyzer",
+        "smoke",
+        "integration",
+        "syntax",
+        "diff",
+        "protected_files",
+        "assets"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "github_apps",
+      "mandatory": true,
+      "category": "Operator credential/configuration required",
+      "status": "blocked",
+      "required_observations": [
+        "installation",
+        "repository_scope",
+        "expiry",
+        "revocation",
+        "separate_identities",
+        "ambiguous_response"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "operator_identity",
+      "mandatory": true,
+      "category": "Operator credential/configuration required",
+      "status": "blocked",
+      "required_observations": [
+        "authenticated_dispatch",
+        "independent_qa",
+        "authenticated_publish"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "security_review",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "blocked",
+      "required_observations": [
+        "host",
+        "vm",
+        "broker",
+        "controller",
+        "publication"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "vm_provider",
+      "mandatory": true,
+      "category": "Software implementation required",
+      "status": "blocked",
+      "required_observations": [
+        "host_service",
+        "guest_image",
+        "signature_verification",
+        "vsock_binding"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "model_transport",
+      "mandatory": true,
+      "category": "Software implementation required",
+      "status": "blocked",
+      "required_observations": [
+        "codex_protocol",
+        "principal_derivation",
+        "bounded_transport",
+        "provider_cancellation"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "qa_assets",
+      "mandatory": true,
+      "category": "Operator credential/configuration required",
+      "status": "blocked",
+      "required_observations": [
+        "locked_dependencies",
+        "native_abi",
+        "test_mongodb",
+        "reviewed_manifest"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "backup_restore",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "blocked",
+      "required_observations": [
+        "encrypted_offhost_backup",
+        "independent_restore",
+        "tamper_rejection",
+        "audit_preservation"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "legacy_state",
+      "mandatory": true,
+      "category": "Operator credential/configuration required",
+      "status": "blocked",
+      "required_observations": [
+        "authoritative_ledger_inventory",
+        "migration_mapping",
+        "outstanding_holds"
+      ],
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "subscription_authentication",
+      "mandatory": true,
+      "category": "Operator credential/configuration required",
+      "status": "blocked",
+      "required_observations": [
+        "official_login",
+        "entitlement",
+        "pinned_client",
+        "headless_support"
+      ],
+      "execution_mode": "chatgpt_subscription",
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "subscription_no_paid_usage",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "blocked",
+      "required_observations": [
+        "paid_refills_disabled",
+        "no_credit_purchase",
+        "no_api_fallback",
+        "account_controls"
+      ],
+      "execution_mode": "chatgpt_subscription",
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "subscription_limits",
+      "mandatory": true,
+      "category": "Independent security verification required",
+      "status": "blocked",
+      "required_observations": [
+        "exhaustion_detection",
+        "unknown_failure_stop",
+        "independent_deadline",
+        "cancellation"
+      ],
+      "execution_mode": "chatgpt_subscription",
+      "reason": "External trust registry not configured"
+    },
+    {
+      "id": "subscription_transport",
+      "mandatory": true,
+      "category": "Software implementation required",
+      "status": "blocked",
+      "reason": "Official subscription execution is not integrated with credential-free isolated workers; custom broker is unsupported and token forwarding is prohibited"
+    },
+    {
+      "id": "activation_release",
+      "mandatory": true,
+      "category": "Software implementation required",
+      "status": "blocked",
+      "reason": "Live activation blocked: api_billing: authoritative reconciliation and strict $10/day and $3/task guarantees unavailable; chatgpt_subscription: supported credential isolation and subscription-only execution remain unverified; no paid refills or API fallback; External sandbox and credential-free model transport need deployment attestation; First live canary and publication require separately reviewed activation"
+    }
+  ]
+}

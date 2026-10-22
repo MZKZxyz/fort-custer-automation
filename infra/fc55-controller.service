@@ -1,0 +1,35 @@
+[Unit]
+Description=Fort Custer trusted offline controller administration
+After=local-fs.target
+RequiresMountsFor=/var/lib/fort-custer
+
+[Service]
+Type=simple
+User=fc-controller
+Group=fc-operators
+UMask=0077
+RuntimeDirectory=fort-custer
+RuntimeDirectoryMode=0750
+StateDirectory=fort-custer
+StateDirectoryMode=0700
+WorkingDirectory=/opt/fort-custer
+ExecStart=/usr/bin/python3 -B /opt/fort-custer/src/controller_service.py serve
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/fort-custer /run/fort-custer
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any
+CapabilityBoundingSet=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target

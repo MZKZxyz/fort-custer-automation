@@ -1,4 +1,4 @@
-.PHONY: test lint images rehearsal rehearsal-local
+.PHONY: test lint images rehearsal rehearsal-local readiness
 
 test:
 	python3 -m unittest discover -s tests -q
@@ -15,3 +15,7 @@ rehearsal: images
 
 rehearsal-local:
 	python3 src/rehearsal.py
+
+# Intentionally nonzero until separately reviewed live activation is authorized.
+readiness:
+	python3 src/readiness.py check

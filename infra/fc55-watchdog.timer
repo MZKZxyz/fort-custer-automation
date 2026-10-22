@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Fort Custer VM watchdog independently of controller
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=5
+AccuracySec=1
+Unit=fc55-watchdog.service
+
+[Install]
+WantedBy=timers.target

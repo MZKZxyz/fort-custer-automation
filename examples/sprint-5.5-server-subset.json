@@ -1,0 +1,95 @@
+{
+  "kind": "real-server-subset",
+  "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+  "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+  "provenance": {
+    "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+    "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+    "lock_sha256": "031fcc3f511c1f4e90407fdb6e3514d5abfb56f1242a60c9b39b58493076c2ac",
+    "baseline_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "protected_changes": [],
+    "diff_scope": "verified baseline only; no live candidate created"
+  },
+  "image": "sha256:18129dad0f94772890220b2148f1d5bf8ceb8073993fbeec371ccad2cc5937eb",
+  "checks": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "test/analyzer.test.js"
+      ],
+      "exit_code": 0,
+      "name": "analyzer",
+      "output": "e3d0047c58402b2a700182d043b3878ce22a1ddd520068ddab1c10470ce1e594",
+      "status": "passed",
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout": "\u2714 simple path, blocked goal, and boundary rejection (4.094339ms)\n\u2714 fire needs an extinguisher and an extra stationary input (1.950525ms)\n\u2714 a legal detour beats a blocked geometric shortcut, without mutating input (0.190565ms)\n\u2714 inventory does not stack, pickups disappear even when full (0.176464ms)\n\u2714 state-dependent detour revisits a position with inventory and cleared fire (0.190465ms)\n\u2714 multiple equal shortest routes and exact geometry (0.174541ms)\n\u2714 limits are inconclusive; malformed grids fail explicitly (0.373097ms)\n\u2714 missing and inaccessible items are reported independently of solvability (0.182924ms)\n\u2714 all reachable transitions agree with pinned client rules (3.410978ms)\n\u2714 seed adapter matches unchanged generator with the same RNG stream (38.28932ms)\n\u2714 deterministic batch replay, generated paths agree with client (237.818006ms)\n\u2714 CLI JSON/JSONL/CSV are parseable, deterministic and reject bad options (815.842212ms)\n\u2714 large batches run in a 64 MiB V8 heap and streaming output is bounded (8163.313754ms)\n\u2139 tests 13\n\u2139 suites 0\n\u2139 pass 13\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 9357.642742\n",
+      "stdout_sha256": "e3d0047c58402b2a700182d043b3878ce22a1ddd520068ddab1c10470ce1e594",
+      "stdout_truncated": false
+    },
+    {
+      "command": [
+        "node",
+        "--test",
+        "test/report-validation.test.js"
+      ],
+      "exit_code": 0,
+      "name": "reports",
+      "output": "7e2f1e23858969c1ab2dfdbe1a270db4698c5e214ea47b0af620ec7066ac91b1",
+      "status": "passed",
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout": "\u2714 report validator accepts different host measurements but rejects deterministic drift (2.646237ms)\n\u2139 tests 1\n\u2139 suites 0\n\u2139 pass 1\n\u2139 fail 0\n\u2139 cancelled 0\n\u2139 skipped 0\n\u2139 todo 0\n\u2139 duration_ms 52.521005\n",
+      "stdout_sha256": "7e2f1e23858969c1ab2dfdbe1a270db4698c5e214ea47b0af620ec7066ac91b1",
+      "stdout_truncated": false
+    },
+    {
+      "command": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import {execFileSync} from 'node:child_process';import assert from 'node:assert/strict';const run=()=>execFileSync(process.execPath,['tools/maze-analyzer/cli.js','--seed','sprint4-0'],{encoding:'utf8'});const a=run(),b=run();assert.equal(a,b);const r=JSON.parse(a);assert.equal(r.seed,'sprint4-0');assert.equal(r.solution.solvable,true)"
+      ],
+      "exit_code": 0,
+      "name": "smoke",
+      "output": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false
+    },
+    {
+      "command": [
+        "node",
+        "--input-type=module",
+        "-e",
+        "import fs from 'node:fs';import {execFileSync} from 'node:child_process';function walk(p){for(const e of fs.readdirSync(p,{withFileTypes:true})){const f=p+'/'+e.name;if(e.isDirectory())walk(f);else if(f.endsWith('.js'))execFileSync(process.execPath,['--check','--',f]);}}walk('/workspace')"
+      ],
+      "exit_code": 0,
+      "name": "syntax",
+      "output": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "passed",
+      "stderr": "",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_truncated": false,
+      "stdout": "",
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_truncated": false
+    }
+  ],
+  "full_suite_passed": false,
+  "vm_attestation": false,
+  "missing": [
+    "full unit discovery",
+    "completion integration",
+    "offline npm cache",
+    "bcrypt native binding",
+    "test-only MongoDB"
+  ]
+}

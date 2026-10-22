@@ -1,0 +1,8 @@
+{
+  "ledger": "/var/lib/fort-custer/planning.db",
+  "socket": "/run/fort-custer/admin.sock",
+  "provider_socket": "/run/fort-custer-vm/provider.sock",
+  "release_root": "/opt/fort-custer",
+  "release_manifest": "/etc/fort-custer/release.json",
+  "operator_uids": [0]
+}
