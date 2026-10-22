@@ -1,0 +1,15 @@
+ARG NODE_BASE
+ARG PYTHON_BASE
+FROM ${NODE_BASE} AS node
+FROM ${PYTHON_BASE}
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules/ /usr/local/lib/node_modules/
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm
+COPY --chmod=0444 infra/worker_entry.py infra/probe.py /opt/
+COPY infra/qa-assets/ /opt/assets/
+COPY --chmod=0444 infra/verify_assets.py /opt/verify_assets.py
+RUN python3 /opt/verify_assets.py
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
+WORKDIR /workspace
+USER 65531:65531
+ENTRYPOINT ["python3", "-I", "/opt/worker_entry.py"]

@@ -1,0 +1,293 @@
+{
+  "synthetic": true,
+  "live_execution": false,
+  "images": {
+    "controller": "sha256:b8f096978f8664ba1b8668da4d1a39f12171f17f30c8e54da94dd813bc380c36",
+    "coding": "sha256:17665d94e7bb656f939a0fdcfd3451e10f3aa43da158a098a777cd1934d67160",
+    "qa": "sha256:b5bce33c538b8b4ec3ce7cfc10c2b05683e79f809b6edb5f2304aefda5742f9e"
+  },
+  "probes": {
+    "coding": {
+      "checks": {
+        "nondumpable_supervisor": true,
+        "nonroot": true,
+        "no_controller": true,
+        "no_socket": true,
+        "no_ledger": true,
+        "no_capabilities": true,
+        "no_new_privileges": true,
+        "file_limit": true,
+        "readonly:/etc/fc-escape": true,
+        "readonly:/opt/fc-escape": true,
+        "network:169.254.169.254": true,
+        "network:10.0.0.1": true,
+        "network:192.168.1.1": true,
+        "network:1.1.1.1": true,
+        "disk:/workspace": true,
+        "disk:/tmp": true,
+        "no_credentials": true
+      }
+    },
+    "qa": {
+      "checks": {
+        "nondumpable_supervisor": true,
+        "nonroot": true,
+        "no_controller": true,
+        "no_socket": true,
+        "no_ledger": true,
+        "no_capabilities": true,
+        "no_new_privileges": true,
+        "file_limit": true,
+        "readonly:/etc/fc-escape": true,
+        "readonly:/opt/fc-escape": true,
+        "network:169.254.169.254": true,
+        "network:10.0.0.1": true,
+        "network:192.168.1.1": true,
+        "network:1.1.1.1": true,
+        "disk:/workspace": true,
+        "disk:/tmp": true,
+        "no_credentials": true
+      }
+    }
+  },
+  "controller_smoke": true,
+  "selected": 1,
+  "candidate": "74c054c972ee6e673d9ebafa651a9588fc4f9556",
+  "artifact_sha": "4746d087190f7a4b11e57e27a3176b2796513967",
+  "tests": [
+    {
+      "name": "isolated-suite",
+      "sha": "74c054c972ee6e673d9ebafa651a9588fc4f9556",
+      "status": "passed",
+      "command": [
+        "policy",
+        "fixture"
+      ],
+      "output": "80bf353b081571757523bcc20833455b87b8998690a1811c195949bddadae412",
+      "artifact_sha256": "f792d763c7aabfeaff0efd9b5bab3368a2cb4bc49b086d9d88cac65dcafb7394",
+      "checks": [
+        {
+          "command": [
+            "/usr/local/bin/python3",
+            "-I",
+            "-c",
+            "import sys,unittest;sys.path.insert(0,'/workspace');r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('/workspace/test'));sys.exit(not r.wasSuccessful())"
+          ],
+          "exit_code": 0,
+          "name": "unit",
+          "output": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+          "status": "passed",
+          "stderr_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "identity": "qa:container:65531",
+      "image": "sha256:b5bce33c538b8b4ec3ce7cfc10c2b05683e79f809b6edb5f2304aefda5742f9e"
+    }
+  ],
+  "failures": {
+    "invalid_authorization": true,
+    "live_execution": true,
+    "missing_billing": true,
+    "unreconciled_candidate": true,
+    "qa_rejection": true,
+    "invalid_publication": true,
+    "cancellation": true,
+    "crash": true,
+    "kill_switch": true
+  },
+  "events": [
+    "daily_plan",
+    "dispatch_authorized",
+    "claimed",
+    "usage_observed",
+    "termination_verified",
+    "billing_reconciled",
+    "candidate",
+    "independent_qa_approved",
+    "publication_authorized",
+    "pr_create_requested",
+    "draft_published"
+  ],
+  "audit_history": [
+    {
+      "id": 1,
+      "at": 1792670400.0,
+      "run": null,
+      "event": "daily_plan",
+      "payload": {
+        "day": "2026-10-22",
+        "fingerprint": "09853bffc3f9476db4a349e02a79d91345c9557d23fd3cb88bc90f4969899321"
+      }
+    },
+    {
+      "id": 2,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "dispatch_authorized",
+      "payload": {
+        "grant": "f19c0a71b7e049d6a74382f923e0b5cf",
+        "operator": "operator:fixture",
+        "spec": {
+          "allowed": [
+            "calc.py"
+          ],
+          "area": "maze",
+          "branch": "task/maze-3",
+          "repo": "synthetic/server",
+          "source": "d7111125444f491cd689c85b2e578991d319bc03",
+          "task": "synthetic/server#3"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "claimed",
+      "payload": {
+        "owner": "coding:isolated"
+      }
+    },
+    {
+      "id": 4,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "usage_observed",
+      "payload": {
+        "billed": false,
+        "digest": "00f0b44ab3179349981adf7139c2e67097d6503613f6ebfd763aabae46bd3f4f"
+      }
+    },
+    {
+      "id": 5,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "termination_verified",
+      "payload": {
+        "prior_state": "running"
+      }
+    },
+    {
+      "id": 6,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "billing_reconciled",
+      "payload": {
+        "cents": 25,
+        "evidence": "fd82486a404403c89c3eca45860c210338e7e2440921a3037eb0ea7ff3dbb282"
+      }
+    },
+    {
+      "id": 7,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "candidate",
+      "payload": {
+        "sha": "74c054c972ee6e673d9ebafa651a9588fc4f9556"
+      }
+    },
+    {
+      "id": 8,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "independent_qa_approved",
+      "payload": {
+        "digest": "c5875f35c6ed7409038067b9af3636b4b725e70e36bf8d99a9b130d3c97b6367",
+        "report": {
+          "artifact_sha": "4746d087190f7a4b11e57e27a3176b2796513967",
+          "candidate": "74c054c972ee6e673d9ebafa651a9588fc4f9556",
+          "diff": "3a54bd7510444598b1a28f6172e9a9b5f1fc3bea94151600a135ae3ccdaa38f4",
+          "files": [
+            "calc.py"
+          ],
+          "policy": "sprint-5.3-v1",
+          "reasons": [],
+          "run": "9bc61dab65094a4fa5f7089c23058253",
+          "source": "d7111125444f491cd689c85b2e578991d319bc03",
+          "synthetic": true,
+          "task": "synthetic/server#3",
+          "tests": [
+            {
+              "artifact_sha256": "f792d763c7aabfeaff0efd9b5bab3368a2cb4bc49b086d9d88cac65dcafb7394",
+              "checks": [
+                {
+                  "command": [
+                    "/usr/local/bin/python3",
+                    "-I",
+                    "-c",
+                    "import sys,unittest;sys.path.insert(0,'/workspace');r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('/workspace/test'));sys.exit(not r.wasSuccessful())"
+                  ],
+                  "exit_code": 0,
+                  "name": "unit",
+                  "output": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+                  "status": "passed",
+                  "stderr_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+                  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                }
+              ],
+              "command": [
+                "policy",
+                "fixture"
+              ],
+              "identity": "qa:container:65531",
+              "image": "sha256:b5bce33c538b8b4ec3ce7cfc10c2b05683e79f809b6edb5f2304aefda5742f9e",
+              "name": "isolated-suite",
+              "output": "80bf353b081571757523bcc20833455b87b8998690a1811c195949bddadae412",
+              "sha": "74c054c972ee6e673d9ebafa651a9588fc4f9556",
+              "status": "passed"
+            }
+          ]
+        },
+        "reviewer": "reviewer:fixture"
+      }
+    },
+    {
+      "id": 9,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "publication_authorized",
+      "payload": {
+        "binding": {
+          "candidate": "74c054c972ee6e673d9ebafa651a9588fc4f9556",
+          "qa": "c5875f35c6ed7409038067b9af3636b4b725e70e36bf8d99a9b130d3c97b6367",
+          "spec": {
+            "allowed": [
+              "calc.py"
+            ],
+            "area": "maze",
+            "branch": "task/maze-3",
+            "repo": "synthetic/server",
+            "source": "d7111125444f491cd689c85b2e578991d319bc03",
+            "task": "synthetic/server#3"
+          }
+        },
+        "operator": "operator:fixture"
+      }
+    },
+    {
+      "id": 10,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "pr_create_requested",
+      "payload": {
+        "candidate": "74c054c972ee6e673d9ebafa651a9588fc4f9556"
+      }
+    },
+    {
+      "id": 11,
+      "at": 1792670400.0,
+      "run": "9bc61dab65094a4fa5f7089c23058253",
+      "event": "draft_published",
+      "payload": {
+        "candidate": "74c054c972ee6e673d9ebafa651a9588fc4f9556",
+        "url": "mock://draft/1"
+      }
+    }
+  ],
+  "draft": true,
+  "planning_holds_preserved": 1,
+  "billed_dollars": null,
+  "synthetic_final_cents": 25,
+  "isolation": "gVisor containers; not a hardened VM boundary"
+}

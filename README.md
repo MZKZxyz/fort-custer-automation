@@ -158,3 +158,16 @@ Sandbox/model transport, approval issuer deployment, server QA infrastructure an
 legacy execution mapping also need separately reviewed evidence before activation.
 No operational planning-state branch change is included. The existing daily
 workflow remains advisory; it is not migrated to live control by this PR.
+
+
+## Sprint 5.4: offline container deployment package
+
+Run `make lint test rehearsal` on a Linux Docker/gVisor host. The rehearsal builds
+three pinned-base images, verifies effective sandbox configuration and negative
+probes, runs a synthetic coding task and independent container QA, and simulates
+one authorized draft PR while retaining the existing ledger gates.
+
+The [operator runbook](docs/SPRINT-5.4-RUNBOOK.md) includes App permissions/setup,
+QA asset preparation, recovery, hosting guidance and the server #3 canary checklist.
+[Provider capability evidence](docs/BUDGET-EVIDENCE.md) explains why billing remains
+a blocker. Live execution/publication are still unconditionally disabled.

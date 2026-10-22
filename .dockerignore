@@ -1,0 +1,17 @@
+*
+!infra
+!infra/worker_entry.py
+!infra/probe.py
+!src
+!src/**
+!config
+!config/**
+!infra/qa-assets
+!infra/qa-assets/**
+!infra/verify_assets.py
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.*
+**/.npmrc
+**/.git

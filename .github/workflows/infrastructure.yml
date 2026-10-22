@@ -1,0 +1,42 @@
+name: Offline infrastructure security
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Infrastructure policy, regressions and optimized fail-closed tests
+        run: |
+          make lint test
+          python3 -O -m unittest discover -s tests -q
+      - name: Install checksum-pinned gVisor for synthetic containers only
+        run: |
+          python3 - <<'PYCODE'
+          import hashlib,json,pathlib,urllib.request
+          lock=json.loads(pathlib.Path('infra/runtime.lock.json').read_text())
+          data=urllib.request.urlopen(lock['url'],timeout=60).read(100*1024*1024)
+          if hashlib.sha256(data).hexdigest()!=lock['sha256']:
+              raise SystemExit('runsc checksum mismatch')
+          pathlib.Path('/tmp/runsc').write_bytes(data)
+          PYCODE
+          sudo install -m 0755 /tmp/runsc /usr/local/bin/runsc
+          sudo /usr/local/bin/runsc install
+          sudo systemctl restart docker
+      - name: Build all images and exercise real isolated offline rehearsal
+        run: |
+          make images
+          mkdir -p /tmp/fc54-evidence
+          python3 src/infrastructure.py rehearse > /tmp/fc54-evidence/report.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: offline-infrastructure-evidence
+          path: /tmp/fc54-evidence/report.json
+          if-no-files-found: error
+          retention-days: 30
