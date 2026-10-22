@@ -79,11 +79,14 @@ class IndependentQA:
                     raise ValueError('QA provenance mismatch')
                 checks=self.runner.checks_for(Path(root)) if hasattr(self.runner,'checks_for') else self.runner.checks
                 for name,command in checks:
-                    tests.append(dict(name=name,sha=candidate,**self.runner.run(Path(root),command)))
+                    result=(self.runner.run_exact(Path(root),command,source,candidate)
+                            if hasattr(self.runner,'run_exact') else self.runner.run(Path(root),command))
+                    tests.append(dict(name=name,sha=candidate,**result))
                 if not tests or any(t['status']!='passed' for t in tests):
                     reasons.append('Required tests failed or missing')
         report=dict(run=run,task=spec['task'],source=source,candidate=candidate,
                     diff=hashlib.sha256(diff).hexdigest(),files=sorted(names),tests=tests,
+                    artifact_sha=git(mirror,'rev-parse',candidate+'^{tree}').decode().strip(),
                     reasons=reasons,synthetic=self.ledger.synthetic,policy='sprint-5.3-v1')
         # The reviewer receives every byte, including binary changes, and the exact test report.
         with self.ledger.tx() as db:
