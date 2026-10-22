@@ -1,0 +1,15 @@
+{
+  "activation": "blocked",
+  "repository": "MZKZxyz/fort-custer-server",
+  "issue": 3,
+  "task_branch": "task/maze-investigation-3",
+  "area": "tools/maze-analyzer",
+  "source_commit": null,
+  "allowed_files": [
+    "docs/maze-generation-rejections.md",
+    "tools/maze-analyzer/README.md"
+  ],
+  "live_concurrency": 1,
+  "publication_enabled": false,
+  "notes": "Review exact scope and pin a fresh source SHA at approval time. Investigate and document; production generator edits require a new scope grant. This template is not authorization."
+}
