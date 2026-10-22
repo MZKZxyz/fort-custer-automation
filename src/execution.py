@@ -47,6 +47,8 @@ class Controller:
     def tx(self):
         with sqlite3.connect(self.path, timeout=30) as db:
             db.row_factory = sqlite3.Row
+            if db.execute("SELECT 1 FROM sqlite_master WHERE name='s53_control'").fetchone():
+                raise ValueError('Sprint 5.3 authority active; legacy execution is fenced')
             db.execute('PRAGMA foreign_keys=ON')
             db.execute('BEGIN IMMEDIATE')
             yield db
@@ -221,3 +223,4 @@ class Controller:
     def snapshot(self):
         with self.tx() as db:
             return {table: [dict(r) for r in db.execute(f'SELECT * FROM {table}')] for table in TABLES}
+

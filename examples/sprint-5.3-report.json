@@ -1,0 +1,39 @@
+{
+  "synthetic": true,
+  "live_execution": false,
+  "selected": 1,
+  "events": [
+    "daily_plan",
+    "dispatch_authorized",
+    "claimed",
+    "usage_observed",
+    "termination_verified",
+    "billing_reconciled",
+    "candidate",
+    "independent_qa_approved",
+    "publication_authorized",
+    "pr_create_requested",
+    "draft_published"
+  ],
+  "qa_tests": [
+    {
+      "name": "unit",
+      "sha": "0f1eb6dee7b364d384167fe96c099afed62d133f",
+      "status": "passed",
+      "command": [
+        "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "test",
+        "-v"
+      ],
+      "output": "1cc6a1424a119d221b466be979c58b289dc1330de89074917df9ae461dd16c4a"
+    }
+  ],
+  "draft": true,
+  "original_planning_holds_preserved": 1,
+  "billed_dollars": null,
+  "synthetic_final_cents": 25
+}

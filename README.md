@@ -142,3 +142,19 @@ Advisory replanning freezes once execution tasks exist in the same ledger; use t
 execution controller to preserve accounting authority until unified live planning
 is separately reviewed. CI simulations use temporary state and never touch the
 operational state branch.
+
+
+## Sprint 5.3: trusted control plane, offline canary rehearsal
+
+Run `python src/rehearsal.py` for the complete credential-free rehearsal, and
+`python -m unittest discover -s tests -v` for all three sprint suites. The new
+[architecture, threat model, operator procedures and activation blockers](docs/SPRINT-5.3.md)
+describe signed single-use human grants, unified ledger ownership, independent QA,
+container/process supervision and draft publication recovery.
+
+**Live Codex and live draft publication are code-blocked.** Official Codex token
+usage does not establish authoritative billing or a hard $10 spending ceiling.
+Sandbox/model transport, approval issuer deployment, server QA infrastructure and
+legacy execution mapping also need separately reviewed evidence before activation.
+No operational planning-state branch change is included. The existing daily
+workflow remains advisory; it is not migrated to live control by this PR.
