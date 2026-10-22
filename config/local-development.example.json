@@ -1,0 +1,22 @@
+{
+  "mode": "local_codex_development",
+  "enabled": false,
+  "trusted_local_tasks_only": true,
+  "scratch_reviewed_no_secrets": false,
+  "timeout_seconds": 2400,
+  "state": "/absolute/operator/local-runner-state",
+  "scratch": "/absolute/disposable/local-runner-workspaces",
+  "cli": "/absolute/trusted/bin/codex",
+  "cli_version": "0.163.0",
+  "cli_sha256": "REPLACE_WITH_REVIEWED_BINARY_SHA256",
+  "operator_home": "/absolute/operator/home",
+  "repositories": {
+    "fort-custer-server": {
+      "source": "/absolute/trusted/local/fort-custer-server",
+      "branch": "main",
+      "sha": "REPLACE_WITH_REVIEWED_40_CHARACTER_SOURCE_SHA"
+    }
+  },
+  "node": "/absolute/trusted/bin/node",
+  "node_sha256": "REPLACE_WITH_REVIEWED_NODE_BINARY_SHA256"
+}

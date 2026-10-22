@@ -207,3 +207,12 @@ Run `python -m unittest discover -s tests -v`; readiness intentionally remains
 nonzero. Full real server QA is still blocked by missing independently verified
 MongoDB/native/npm assets and an isolated QA runtime. Neither offline tests nor
 configuration flags authorize live usage.
+
+## Sprint 5.8: manual local development runner
+
+The separate, disabled-by-default `local_codex_development` workflow prepares,
+inspects, terminal-approves and executes one trusted local task at a time. See
+[operator procedure and security limits](docs/SPRINT-5.8.md). It uses an existing
+operator-managed official CLI login, disposable workspaces and controller-owned
+QA. Production profiles/readiness and daily scheduling are unchanged. No first
+real task, remote write or PR publication is authorized by this sprint's tests.
