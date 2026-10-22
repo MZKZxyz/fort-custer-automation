@@ -55,7 +55,8 @@ class Verifier:
 
 
 LIVE_BLOCKERS = (
-    'Codex usage is not authoritative billing or a provider-enforced hard dollar ceiling',
+    'api_billing: authoritative reconciliation and strict $10/day and $3/task guarantees unavailable',
+    'chatgpt_subscription: supported credential isolation and subscription-only execution remain unverified; no paid refills or API fallback',
     'External sandbox and credential-free model transport need deployment attestation',
     'First live canary and publication require separately reviewed activation',
 )

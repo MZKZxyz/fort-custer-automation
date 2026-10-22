@@ -86,6 +86,7 @@ def rehearse(evidence_dir=None):
         raise ValueError('Offline rehearsal must preserve blocked live readiness')
     result = run_rehearsal(worker_hook=lambda *args: worker_hook(*args, evidence_dir=evidence_dir), evidence_dir=evidence_dir)
     report = dict(kind='offline-control-plane-contract-rehearsal', live_execution=False,
+                live_authentication_tested=False, synthetic_provider_is_not_subscription_or_api_validation=True,
                 readiness=readiness, workflow=result, cancellation=cancellation_rehearsal(evidence_dir), real_server_suite='not_run',
                 real_vm_attestation=False, offhost_restore_attestation=False)
     if evidence_dir is not None:

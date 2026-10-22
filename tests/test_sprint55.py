@@ -44,7 +44,7 @@ class OperationalTests(unittest.TestCase):
         self.assertFalse(audit()['ready'])
         (self.root/'controller.json').write_text('{"passed":true}')
         result = audit(self.root, self.root/'untrusted.json')
-        self.assertTrue(all(c['status']=='blocked' for c in result['checks'] if c['id']!='policy_integrity'))
+        self.assertTrue(all(c['status']=='blocked' for c in result['checks'] if c['mandatory'] and c['id'] not in ('policy_integrity','execution_configuration')))
         p = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1]/'src/readiness.py'), 'check'], capture_output=True)
         self.assertEqual(p.returncode, 1)
         self.assertEqual(json.loads(p.stdout)['policy'], POLICY)

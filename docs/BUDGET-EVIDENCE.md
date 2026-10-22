@@ -1,5 +1,12 @@
 # Spending controls: inspected 2026-10-22
 
+Scope: the dollar ceilings and financial reconciler below apply to `api_billing`.
+The separately disabled `chatgpt_subscription` profile uses official ChatGPT
+entitlements only in a future reviewed integration, never paid refills/API fallback.
+Subscription quotas do not prove a per-task cutoff, a dollar cap or final charges.
+See [subscription investigation and blockers](SUBSCRIPTION-EVIDENCE.md). Existing
+ledger holds are preserved; no subscription event can finalize them as a zero bill.
+
 ## Sprint 5.5 documentation update
 
 The current [project management documentation](https://help.openai.com/en/articles/9186755-managing-projects-in-the-api-platform)

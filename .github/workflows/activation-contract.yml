@@ -26,6 +26,13 @@ jobs:
           result=$?
           set -e
           test "$result" -eq 1
+          for mode in chatgpt_subscription api_billing; do
+            set +e
+            python3 src/readiness.py check --mode "$mode" > "/tmp/fc55-evidence/readiness-$mode.json"
+            result=$?
+            set -e
+            test "$result" -eq 1
+          done
           python3 - <<'PY'
           import json
           r=json.load(open('/tmp/fc55-evidence/readiness.json'))

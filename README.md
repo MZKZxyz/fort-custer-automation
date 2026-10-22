@@ -174,6 +174,13 @@ a blocker. Live execution/publication are still unconditionally disabled.
 
 ## Sprint 5.5: operational readiness package
 
+Execution/billing profiles in `config/execution-modes.json` distinguish the intended
+initial `chatgpt_subscription` from `api_billing`. Audit either with
+`python3 src/readiness.py check --mode MODE`; both remain disabled and fail readiness.
+Subscription mode prohibits credit purchases, paid refills, token proxying and API
+fallback. Official client/headless support and the unresolved credential-isolation
+boundary are documented in [SUBSCRIPTION-EVIDENCE.md](docs/SUBSCRIPTION-EVIDENCE.md).
+
 `python3 src/readiness.py check` emits mandatory readiness gates and intentionally
 exits 1. The [activation audit](docs/SPRINT-5.5-AUDIT.md) identifies remaining software,
 deployment, identity, financial and independent verification requirements. Follow

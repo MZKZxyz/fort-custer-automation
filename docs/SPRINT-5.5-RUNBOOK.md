@@ -208,6 +208,40 @@ Inspect the full candidate diff/protected paths through IndependentQA separately
 
 ## 7. Financial safeguards (owner + independent reviewer)
 
+First choose the explicit profile in `config/execution-modes.json`. The intended
+initial profile is `chatgpt_subscription`; both modes remain disabled. Audit each:
+
+```sh
+python3 src/readiness.py check --mode chatgpt_subscription
+python3 src/readiness.py check --mode api_billing
+# Both exit 1. These commands do not log in, buy usage or invoke a model.
+```
+
+For **chatgpt_subscription**, read `SUBSCRIPTION-EVIDENCE.md`. Official
+browser/device login and headless execution exist for suitable accounts/trusted
+runners; the SDK is not a subscription proxy. Future owner setup must use official
+Codex-managed sign-in on a separately reviewed trusted runner. Do not log in as part
+of this sprint. Do not copy auth caches to coding/QA environments or extract/forward
+tokens to the custom broker. Verify account/workspace eligibility and no-paid-credit
+controls through supported product interfaces; none have been verified here.
+
+On a future supported collector, structured exhaustion or exhausted quota windows
+stop execution; CLI failures stop as unknown. Preserve accounting/termination
+evidence, cancel/revoke execution and require operator review. Never automatically
+buy credits, use paid refills or earned resets, retry after a quota reset, send
+credit-nudge emails, switch to API billing or choose another provider. Unknown quota
+does not permit dispatch. Usage limits are not guaranteed per-task cutoffs; an
+existing credit balance may invalidate a subscription-only guarantee.
+
+**STOP:** the credential-free worker/custom-broker design has no reviewed official
+subscription integration. Keep `subscription_transport` blocked after owner login.
+The synthetic rehearsal proves no real entitlement. Do not clear existing holds or
+convert them to $0 subscription settlements.
+
+For **api_billing**, separately enabled API billing/trusted broker credentials need
+a distinct future review. The original dollar policy below continues in full; it
+does not claim that subscription quotas enforce financial caps:
+
 Read `BUDGET-EVIDENCE.md`. Preserve $10/day, $3/task, one live agent, 40 minutes,
 two retries, no automatic merge/deployment. Configure provider project restrictions
 and alerts as defense in depth; monthly limits with overshoot are insufficient.

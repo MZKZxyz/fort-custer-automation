@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 import time
 from trust import canonical, digest, require_live
+from execution_modes import read_modes, MODES
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'bfbc4785d6e5d2e86f7fd70590cff6735f75062f'
@@ -34,8 +35,14 @@ GATES = {
     'qa_assets': ('Operator credential/configuration required', ['locked_dependencies', 'native_abi', 'test_mongodb', 'reviewed_manifest']),
     'backup_restore': ('Independent security verification required', ['encrypted_offhost_backup', 'independent_restore', 'tamper_rejection', 'audit_preservation']),
     'legacy_state': ('Operator credential/configuration required', ['authoritative_ledger_inventory', 'migration_mapping', 'outstanding_holds']),
+    'subscription_authentication': ('Operator credential/configuration required', ['official_login', 'entitlement', 'pinned_client', 'headless_support']),
+    'subscription_no_paid_usage': ('Independent security verification required', ['paid_refills_disabled', 'no_credit_purchase', 'no_api_fallback', 'account_controls']),
+    'subscription_limits': ('Independent security verification required', ['exhaustion_detection', 'unknown_failure_stop', 'independent_deadline', 'cancellation']),
 }
+MODE_GATES = dict(billing='api_billing', broker='api_billing', subscription_authentication='chatgpt_subscription',
+                  subscription_no_paid_usage='chatgpt_subscription', subscription_limits='chatgpt_subscription')
 CONFIG_HASHES = {
+    'execution-modes.json': '19a5a90aa817809e51d6a289aa50979538e4d0cfc24edc547b6f3ee26a976faa',
     'policy.json': 'b7fe1204ee691061fc6b917742f080a7d8952e4799fa155675e07e81bc9658c5',
     'settings.json': '45c36fe9f4a467406d084dc5f9f9741e0b2ceada806dae4f324d227794058237',
 }
@@ -94,11 +101,16 @@ def verify_receipt(gate, receipt, trust, artifacts, now, context):
     return digest(p)
 
 
-def audit(evidence=None, trust_path=None, now=None):
+def audit(evidence=None, trust_path=None, now=None, mode=None):
     now = int(time.time()) if now is None else now
     canary = json.loads((ROOT/'config/canary-target.json').read_text())
+    try:
+        execution_config, selected = read_modes(ROOT, mode)
+        mode_error = None
+    except (OSError, ValueError, TypeError):
+        execution_config, selected, mode_error = None, None, 'Missing, invalid or weakened execution mode configuration'
     context = dict(automation_base=BASE, source=canary['source_commit'], tree=canary['source_tree'],
-                   canary=digest(canary), software=digest({
+                   canary=digest(canary), execution_mode=selected, execution_config=digest(execution_config), software=digest({
                        str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
                        for folder in ('src', 'infra', 'config') for p in sorted((ROOT/folder).rglob('*'))
                        if p.is_file() and '__pycache__' not in p.parts and p.suffix != '.pyc'}))
@@ -118,8 +130,16 @@ def audit(evidence=None, trust_path=None, now=None):
     checks = [dict(id='policy_integrity', mandatory=True, category='Independent security verification required',
                    status='verified' if policy_ok else 'blocked',
                    reason='Configuration matches reviewed unchanged spending/security policy' if policy_ok else 'Spending/security configuration drift')]
+    checks.append(dict(id='execution_configuration', mandatory=True, category='Operator credential/configuration required',
+                       status='blocked' if mode_error else 'verified', reason=mode_error or 'Both reviewed execution modes disabled; no automatic switch'))
     for gate, (category, observations) in GATES.items():
         result = dict(id=gate, mandatory=True, category=category, status='blocked', required_observations=observations)
+        if gate in MODE_GATES:
+            result['execution_mode'] = MODE_GATES[gate]
+            if selected is not None and MODE_GATES[gate] != selected:
+                result.update(mandatory=False, status='not_applicable', reason='Required for the other execution mode; not satisfied or waived')
+                checks.append(result)
+                continue
         try:
             if trust_error:
                 raise ValueError(trust_error)
@@ -131,6 +151,9 @@ def audit(evidence=None, trust_path=None, now=None):
         except (OSError, KeyError, TypeError, ValueError, subprocess.SubprocessError):
             result['reason'] = trust_error or 'Missing, forged, stale, incomplete or mismatched deployment evidence'
         checks.append(result)
+    if selected == 'chatgpt_subscription' or mode_error:
+        checks.append(dict(id='subscription_transport', mandatory=True, category='Software implementation required',
+                           status='blocked', reason='Official subscription execution is not integrated with credential-free isolated workers; custom broker is unsupported and token forwarding is prohibited'))
     # No signed evidence, config or CLI option can override this code gate.
     try:
         require_live()
@@ -140,7 +163,9 @@ def audit(evidence=None, trust_path=None, now=None):
     else:
         checks.append(dict(id='activation_release', mandatory=True, category='Independent security verification required',
                            status='blocked', reason='Live gate changed; release requires separate review'))
-    return dict(schema=1, ready=False, live_execution=False, context=context, policy=POLICY, checks=checks)
+    return dict(schema=2, ready=False, live_execution=False, execution_mode=selected,
+                api_financial_policy_applies=selected == 'api_billing', subscription_usage_is_billing=False,
+                execution_config=execution_config, context=context, policy=POLICY, checks=checks)
 
 
 def main():
@@ -148,8 +173,9 @@ def main():
     parser.add_argument('action', choices=['check'])
     parser.add_argument('--evidence', type=Path)
     parser.add_argument('--trust', type=Path)
+    parser.add_argument('--mode', choices=MODES, help='Audit one mode explicitly; never enables execution or automatic fallback')
     args = parser.parse_args()
-    report = audit(args.evidence, args.trust)
+    report = audit(args.evidence, args.trust, mode=args.mode)
     print(json.dumps(report, indent=2))
     return 1 if any(c['mandatory'] and c['status'] != 'verified' for c in report['checks']) else 0
 

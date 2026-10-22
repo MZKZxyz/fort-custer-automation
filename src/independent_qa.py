@@ -17,7 +17,8 @@ PROTECTED = ('.github', '.git', 'config', 'infra', 'migrations', 'AGENTS.md',
              'src/independent_qa.py', 'src/codex_adapter.py', 'src/publication.py',
              'src/readiness.py', 'src/model_broker.py', 'src/vm_runtime.py',
              'src/controller_service.py', 'src/vm_watchdog.py', 'src/ledger_backup.py',
-             'src/app_operations.py', 'src/server_qa.py', 'src/server_subset_qa.py', 'src/activation_rehearsal.py')
+             'src/app_operations.py', 'src/server_qa.py', 'src/server_subset_qa.py', 'src/activation_rehearsal.py',
+             'src/execution_modes.py')
 RISKS = ('security','api','data','gameplay','deployment')
 SERVER_CHECKS = (
     ('analyzer', ('node','--test','test/analyzer.test.js')),

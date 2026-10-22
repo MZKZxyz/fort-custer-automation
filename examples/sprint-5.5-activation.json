@@ -1,16 +1,50 @@
 {
   "kind": "offline-control-plane-contract-rehearsal",
   "live_execution": false,
+  "live_authentication_tested": false,
+  "synthetic_provider_is_not_subscription_or_api_validation": true,
   "readiness": {
-    "schema": 1,
+    "schema": 2,
     "ready": false,
     "live_execution": false,
+    "execution_mode": "chatgpt_subscription",
+    "api_financial_policy_applies": false,
+    "subscription_usage_is_billing": false,
+    "execution_config": {
+      "schema": 1,
+      "selected": "chatgpt_subscription",
+      "automatic_mode_switch": false,
+      "modes": {
+        "chatgpt_subscription": {
+          "live_enabled": false,
+          "authentication": "official_codex_chatgpt_login",
+          "custom_model_broker": false,
+          "automatic_credit_purchase": false,
+          "paid_refills": false,
+          "api_billing_fallback": false,
+          "quota_is_per_task_cutoff": false,
+          "exhaustion_action": "stop_and_require_operator",
+          "credential_transport": "unimplemented_blocked"
+        },
+        "api_billing": {
+          "live_enabled": false,
+          "authentication": "api_key_in_trusted_broker_only",
+          "daily_cents": 1000,
+          "task_reservation_cents": 300,
+          "hard_cap_guarantee_required": true,
+          "authoritative_reconciliation_required": true,
+          "fail_closed": true
+        }
+      }
+    },
     "context": {
       "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
       "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
       "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
       "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
-      "software": "284b1c54cf1f611f8527eea576be3bbdcd1ba7882c5d01e5fe9b77a1475c448e"
+      "execution_mode": "chatgpt_subscription",
+      "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+      "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
     },
     "policy": {
       "daily_cents": 1000,
@@ -28,6 +62,13 @@
         "category": "Independent security verification required",
         "status": "verified",
         "reason": "Configuration matches reviewed unchanged spending/security policy"
+      },
+      {
+        "id": "execution_configuration",
+        "mandatory": true,
+        "category": "Operator credential/configuration required",
+        "status": "verified",
+        "reason": "Both reviewed execution modes disabled; no automatic switch"
       },
       {
         "id": "controller",
@@ -75,9 +116,9 @@
       },
       {
         "id": "broker",
-        "mandatory": true,
+        "mandatory": false,
         "category": "Software implementation required",
-        "status": "blocked",
+        "status": "not_applicable",
         "required_observations": [
           "worker_auth",
           "task_binding",
@@ -87,13 +128,14 @@
           "revocation",
           "usage_provenance"
         ],
-        "reason": "External trust registry not configured"
+        "execution_mode": "api_billing",
+        "reason": "Required for the other execution mode; not satisfied or waived"
       },
       {
         "id": "billing",
-        "mandatory": true,
+        "mandatory": false,
         "category": "Provider capability or billing guarantee required",
-        "status": "blocked",
+        "status": "not_applicable",
         "required_observations": [
           "daily_hard_cap",
           "task_hard_cap",
@@ -101,7 +143,8 @@
           "delayed_charges",
           "cross_midnight"
         ],
-        "reason": "External trust registry not configured"
+        "execution_mode": "api_billing",
+        "reason": "Required for the other execution mode; not satisfied or waived"
       },
       {
         "id": "server_qa",
@@ -226,11 +269,60 @@
         "reason": "External trust registry not configured"
       },
       {
+        "id": "subscription_authentication",
+        "mandatory": true,
+        "category": "Operator credential/configuration required",
+        "status": "blocked",
+        "required_observations": [
+          "official_login",
+          "entitlement",
+          "pinned_client",
+          "headless_support"
+        ],
+        "execution_mode": "chatgpt_subscription",
+        "reason": "External trust registry not configured"
+      },
+      {
+        "id": "subscription_no_paid_usage",
+        "mandatory": true,
+        "category": "Independent security verification required",
+        "status": "blocked",
+        "required_observations": [
+          "paid_refills_disabled",
+          "no_credit_purchase",
+          "no_api_fallback",
+          "account_controls"
+        ],
+        "execution_mode": "chatgpt_subscription",
+        "reason": "External trust registry not configured"
+      },
+      {
+        "id": "subscription_limits",
+        "mandatory": true,
+        "category": "Independent security verification required",
+        "status": "blocked",
+        "required_observations": [
+          "exhaustion_detection",
+          "unknown_failure_stop",
+          "independent_deadline",
+          "cancellation"
+        ],
+        "execution_mode": "chatgpt_subscription",
+        "reason": "External trust registry not configured"
+      },
+      {
+        "id": "subscription_transport",
+        "mandatory": true,
+        "category": "Software implementation required",
+        "status": "blocked",
+        "reason": "Official subscription execution is not integrated with credential-free isolated workers; custom broker is unsupported and token forwarding is prohibited"
+      },
+      {
         "id": "activation_release",
         "mandatory": true,
         "category": "Software implementation required",
         "status": "blocked",
-        "reason": "Live activation blocked: Codex usage is not authoritative billing or a provider-enforced hard dollar ceiling; External sandbox and credential-free model transport need deployment attestation; First live canary and publication require separately reviewed activation"
+        "reason": "Live activation blocked: api_billing: authoritative reconciliation and strict $10/day and $3/task guarantees unavailable; chatgpt_subscription: supported credential isolation and subscription-only execution remain unverified; no paid refills or API fallback; External sandbox and credential-free model transport need deployment attestation; First live canary and publication require separately reviewed activation"
       }
     ]
   },
@@ -254,7 +346,7 @@
         "response",
         "revoked"
       ],
-      "response_digest": "a8e15ecd2d596e66061c7d1db48a439117e468feca477bddb53a14653610393f",
+      "response_digest": "dc41b4a65080c37eda16c31972d38de348ceb2bda4a8300e4604ca6883cabc23",
       "credentials_in_worker": false
     },
     "events": [
@@ -273,7 +365,7 @@
     "qa_tests": [
       {
         "name": "unit",
-        "sha": "a1808d73753e48cd51c5a9aa272478f4470d5a3a",
+        "sha": "44e59ed7ab084c2ced4514838c15de109cbe3642",
         "status": "passed",
         "command": [
           "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3",

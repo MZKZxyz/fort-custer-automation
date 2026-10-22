@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "observed_date": "2026-10-22",
+  "cli_version": "0.163.0",
+  "commands_inspected": [
+    "codex --version",
+    "codex login --help",
+    "codex app-server generate-json-schema --out TEMP_DIRECTORY"
+  ],
+  "authentication_attempted": false,
+  "model_execution_attempted": false,
+  "auth_tokens_inspected": false,
+  "schema_sha256": {
+    "v2/ErrorNotification.json": "63518d8faae38b8eb73518d59b113f77603d238dd0cf36260b4232f381f43f8c",
+    "v2/TurnCompletedNotification.json": "69413578ec3ecd02691424bdeb9d640c7244b4ca4c5c3ef26f69a2efe7c37db8",
+    "v2/AccountRateLimitsUpdatedNotification.json": "37326ef0364007be0c8f92bf5cd228941b513f87266edd566d694409b5aa5b8b"
+  },
+  "mode_readiness": {
+    "chatgpt_subscription": {
+      "ready": false,
+      "live_execution": false,
+      "blocked_mandatory": 17,
+      "context": {
+        "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+        "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+        "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+        "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+        "execution_mode": "chatgpt_subscription",
+        "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+        "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
+      },
+      "configuration": {
+        "live_enabled": false,
+        "authentication": "official_codex_chatgpt_login",
+        "custom_model_broker": false,
+        "automatic_credit_purchase": false,
+        "paid_refills": false,
+        "api_billing_fallback": false,
+        "quota_is_per_task_cutoff": false,
+        "exhaustion_action": "stop_and_require_operator",
+        "credential_transport": "unimplemented_blocked"
+      }
+    },
+    "api_billing": {
+      "ready": false,
+      "live_execution": false,
+      "blocked_mandatory": 15,
+      "context": {
+        "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+        "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+        "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+        "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+        "execution_mode": "api_billing",
+        "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+        "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
+      },
+      "configuration": {
+        "live_enabled": false,
+        "authentication": "api_key_in_trusted_broker_only",
+        "daily_cents": 1000,
+        "task_reservation_cents": 300,
+        "hard_cap_guarantee_required": true,
+        "authoritative_reconciliation_required": true,
+        "fail_closed": true
+      }
+    }
+  },
+  "limitation": "Official headless client support does not establish secure compatibility with this custom credential-free worker/broker architecture"
+}

@@ -1,5 +1,14 @@
 # Sprint 5.5 operational audit
 
+The intended initial execution mode is now `chatgpt_subscription`; `api_billing`
+is separate. Both are disabled. See [subscription evidence](SUBSCRIPTION-EVIDENCE.md).
+Readiness reports 17 blocked mandatory gates for subscription mode and 15 for API
+mode. API dollar-cap/broker gates are explicitly not applicable to subscription
+mode, rather than falsely satisfied. Subscription login/entitlement, no-paid-usage
+controls, exhaustion handling and supported credential-isolated transport remain
+mandatory. Receipts bind the selected mode and full configuration digest; evidence
+for one mode cannot clear the other. The shared live gate cannot be cleared by either.
+
 Baseline: automation `bfbc4785d6e5d2e86f7fd70590cff6735f75062f`, tree
 `40d75218a7d56087796939683302f9d91a5505c9`. Audited 2026-10-22.
 This is a partially implemented activation package. **Sprint 5.6 live execution
@@ -42,7 +51,8 @@ stub; CodexAdapter does not implement a credential-free live model channel.
 | legacy state | Operator credential/configuration required | Review authoritative ledger inventory and any 5.2 execution migration mapping. Never initialize/reset to bypass missing history, holds or corruption. |
 | activation_release | Software implementation required | Merge/review this PR, resolve all above, then separately authorize/review a future activation release. Preserve a separate dispatch approval and a separate draft publication approval. |
 
-`python3 src/readiness.py check` emits the machine-readable gate manifest and
+`python3 src/readiness.py check --mode chatgpt_subscription` (or `--mode api_billing`)
+emits the machine-readable gate manifest and
 exits **1**. It checks gate-specific Ed25519 receipts against external root-owned
 trust paths, fixed policy, reviewed source/tree, current software digests, expiry
 and complete artifact hashes. No `passed: true` field is recognized. The independent

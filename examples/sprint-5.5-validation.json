@@ -1,67 +1,10 @@
 {
-  "schema": 1,
+  "schema": 2,
   "observed_date": "2026-10-22",
   "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
-  "software_context": {
-    "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
-    "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
-    "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
-    "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
-    "software": "284b1c54cf1f611f8527eea576be3bbdcd1ba7882c5d01e5fe9b77a1475c448e"
-  },
   "live_execution": false,
   "cloud_deployments": false,
   "operational_ledger_modified": false,
-  "checks": [
-    {
-      "command": "make lint",
-      "exit_code": 0
-    },
-    {
-      "command": "python3 -m unittest discover -s tests -q (age v1.2.1 on PATH)",
-      "tests": 120,
-      "passed": 120,
-      "skipped": 0,
-      "exit_code": 0
-    },
-    {
-      "command": "python3 -O -m unittest discover -s tests -q (age v1.2.1 on PATH)",
-      "tests": 120,
-      "passed": 120,
-      "skipped": 0,
-      "exit_code": 0
-    },
-    {
-      "command": "systemd-analyze verify infra/fc55-controller.service infra/fc55-watchdog.service infra/fc55-watchdog.timer",
-      "exit_code": 0,
-      "deployed": false
-    },
-    {
-      "command": "python3 src/infrastructure.py build; python3 src/infrastructure.py rehearse",
-      "exit_code": 0,
-      "production_vm_attestation": false
-    },
-    {
-      "command": "python3 src/server_subset_qa.py /workspace/server-reviewed",
-      "exit_code": 0,
-      "full_server_suite": false
-    },
-    {
-      "command": "python3 src/activation_rehearsal.py --evidence-dir NEW_DIRECTORY",
-      "exit_code": 0,
-      "synthetic": true,
-      "durable_exports": true
-    },
-    {
-      "command": "python3 src/readiness.py check",
-      "exit_code": 1,
-      "blocked": 15
-    },
-    {
-      "command": "git diff --check",
-      "exit_code": 0
-    }
-  ],
   "encrypted_backup": {
     "tool": "age v1.2.1",
     "archive_sha256": "7df45a6cc87d4da11cc03a539a7470c15b1041ab2b396af088fe9990f7c79d50",
@@ -89,17 +32,204 @@
       "test/completions.test.js"
     ]
   },
-  "snapshots": {
-    "sprint-5.5-readiness.json": "ad8c1a2f6aadb0e255de94b031b3e55f84ced84da773142c003ce93c15082609",
-    "sprint-5.5-activation.json": "3002db01b23bdb00aac229b138d4fa40db9ee7bd62a405155e97b8a6b564d4d4",
-    "sprint-5.5-server-subset.json": "9bac22bfbafde6c5c40d6a8e24959f47610d10077f1d5cacf6bc285adf9f3d44",
-    "sprint-5.5-containers.json": "8d67297c933eb50f4428a22d5dbe30cfff98fe943d774573eebb432284cc9241"
-  },
   "limitations": [
     "Historical example snapshots are not readiness credentials",
     "No production microVM host service or live Codex transport implemented/deployed",
     "No strict provider $10/day and $3/task guarantee established",
     "GitHub App lifecycle uses synthetic transport; no real App or credentials created",
     "Independent off-host restore and security review remain outstanding"
-  ]
+  ],
+  "historical_validation": {
+    "commit": "9f0ed0a49c9ccbc24003695f04ff80fa7778970a",
+    "software_context": {
+      "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+      "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+      "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+      "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+      "software": "284b1c54cf1f611f8527eea576be3bbdcd1ba7882c5d01e5fe9b77a1475c448e"
+    },
+    "checks": [
+      {
+        "command": "make lint",
+        "exit_code": 0
+      },
+      {
+        "command": "python3 -m unittest discover -s tests -q (age v1.2.1 on PATH)",
+        "tests": 120,
+        "passed": 120,
+        "skipped": 0,
+        "exit_code": 0
+      },
+      {
+        "command": "python3 -O -m unittest discover -s tests -q (age v1.2.1 on PATH)",
+        "tests": 120,
+        "passed": 120,
+        "skipped": 0,
+        "exit_code": 0
+      },
+      {
+        "command": "systemd-analyze verify infra/fc55-controller.service infra/fc55-watchdog.service infra/fc55-watchdog.timer",
+        "exit_code": 0,
+        "deployed": false
+      },
+      {
+        "command": "python3 src/infrastructure.py build; python3 src/infrastructure.py rehearse",
+        "exit_code": 0,
+        "production_vm_attestation": false
+      },
+      {
+        "command": "python3 src/server_subset_qa.py /workspace/server-reviewed",
+        "exit_code": 0,
+        "full_server_suite": false
+      },
+      {
+        "command": "python3 src/activation_rehearsal.py --evidence-dir NEW_DIRECTORY",
+        "exit_code": 0,
+        "synthetic": true,
+        "durable_exports": true
+      },
+      {
+        "command": "python3 src/readiness.py check",
+        "exit_code": 1,
+        "blocked": 15
+      },
+      {
+        "command": "git diff --check",
+        "exit_code": 0
+      }
+    ],
+    "snapshots": {
+      "sprint-5.5-readiness.json": "ad8c1a2f6aadb0e255de94b031b3e55f84ced84da773142c003ce93c15082609",
+      "sprint-5.5-activation.json": "3002db01b23bdb00aac229b138d4fa40db9ee7bd62a405155e97b8a6b564d4d4",
+      "sprint-5.5-server-subset.json": "9bac22bfbafde6c5c40d6a8e24959f47610d10077f1d5cacf6bc285adf9f3d44",
+      "sprint-5.5-containers.json": "8d67297c933eb50f4428a22d5dbe30cfff98fe943d774573eebb432284cc9241"
+    },
+    "scope": "Prior local age and isolated container/server subset results; unchanged suites were not rerun for execution-mode-only update"
+  },
+  "software_context": {
+    "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+    "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+    "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+    "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+    "execution_mode": "chatgpt_subscription",
+    "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+    "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
+  },
+  "checks": [
+    {
+      "command": "make lint",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -q",
+      "tests": 128,
+      "passed": 127,
+      "skipped": 1,
+      "skip_reason": "age not installed in resumed workspace; encrypted restore code unchanged",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -q",
+      "tests": 128,
+      "passed": 127,
+      "skipped": 1,
+      "exit_code": 0
+    },
+    {
+      "command": "python3 src/readiness.py check --mode chatgpt_subscription",
+      "exit_code": 1,
+      "blocked_mandatory": 17
+    },
+    {
+      "command": "python3 src/readiness.py check --mode api_billing",
+      "exit_code": 1,
+      "blocked_mandatory": 15
+    },
+    {
+      "command": "python3 src/activation_rehearsal.py --evidence-dir NEW_DIRECTORY",
+      "exit_code": 0,
+      "live_authentication_tested": false
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "execution_modes": {
+    "schema": 1,
+    "observed_date": "2026-10-22",
+    "cli_version": "0.163.0",
+    "commands_inspected": [
+      "codex --version",
+      "codex login --help",
+      "codex app-server generate-json-schema --out TEMP_DIRECTORY"
+    ],
+    "authentication_attempted": false,
+    "model_execution_attempted": false,
+    "auth_tokens_inspected": false,
+    "schema_sha256": {
+      "v2/ErrorNotification.json": "63518d8faae38b8eb73518d59b113f77603d238dd0cf36260b4232f381f43f8c",
+      "v2/TurnCompletedNotification.json": "69413578ec3ecd02691424bdeb9d640c7244b4ca4c5c3ef26f69a2efe7c37db8",
+      "v2/AccountRateLimitsUpdatedNotification.json": "37326ef0364007be0c8f92bf5cd228941b513f87266edd566d694409b5aa5b8b"
+    },
+    "mode_readiness": {
+      "chatgpt_subscription": {
+        "ready": false,
+        "live_execution": false,
+        "blocked_mandatory": 17,
+        "context": {
+          "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+          "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+          "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+          "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+          "execution_mode": "chatgpt_subscription",
+          "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+          "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
+        },
+        "configuration": {
+          "live_enabled": false,
+          "authentication": "official_codex_chatgpt_login",
+          "custom_model_broker": false,
+          "automatic_credit_purchase": false,
+          "paid_refills": false,
+          "api_billing_fallback": false,
+          "quota_is_per_task_cutoff": false,
+          "exhaustion_action": "stop_and_require_operator",
+          "credential_transport": "unimplemented_blocked"
+        }
+      },
+      "api_billing": {
+        "ready": false,
+        "live_execution": false,
+        "blocked_mandatory": 15,
+        "context": {
+          "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+          "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+          "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+          "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+          "execution_mode": "api_billing",
+          "execution_config": "bade5094df95a0e7229d1b711fb746f4567370a9399e356a7e9c5f62b755a3c1",
+          "software": "eff88e060f578de9ef9cb7a558015b530d6b7c9ba85b4c08447768bdff1f2bf3"
+        },
+        "configuration": {
+          "live_enabled": false,
+          "authentication": "api_key_in_trusted_broker_only",
+          "daily_cents": 1000,
+          "task_reservation_cents": 300,
+          "hard_cap_guarantee_required": true,
+          "authoritative_reconciliation_required": true,
+          "fail_closed": true
+        }
+      }
+    },
+    "limitation": "Official headless client support does not establish secure compatibility with this custom credential-free worker/broker architecture"
+  },
+  "snapshots": {
+    "sprint-5.5-readiness.json": "40bb650f5b498ebd840b3419a8f08373839aa6ff1658baa24e9588268037163f",
+    "sprint-5.5-readiness-api.json": "22c5e411791e0518a247f1f3515a609d0aaa9543faae8e58a513e39925379bd1",
+    "sprint-5.5-activation.json": "591304273769f69e33d35392eed962957715fe254aabe687ad0187ae813542da",
+    "sprint-5.5-execution-modes.json": "53ee7aeebeffb7a2b3062ea97f51429a0f299420f9ca72d78505a86b4b3c3856",
+    "sprint-5.5-containers.json": "8d67297c933eb50f4428a22d5dbe30cfff98fe943d774573eebb432284cc9241",
+    "sprint-5.5-server-subset.json": "9bac22bfbafde6c5c40d6a8e24959f47610d10077f1d5cacf6bc285adf9f3d44"
+  }
 }
