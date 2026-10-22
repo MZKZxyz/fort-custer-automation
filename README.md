@@ -216,3 +216,12 @@ inspects, terminal-approves and executes one trusted local task at a time. See
 operator-managed official CLI login, disposable workspaces and controller-owned
 QA. Production profiles/readiness and daily scheduling are unchanged. No first
 real task, remote write or PR publication is authorized by this sprint's tests.
+
+## Sprint 5.9: guarded draft publication
+
+The local runner has separate terminal publication approval and durable artifact
+reconstruction. A dedicated publisher reconciles a new feature branch and exact
+draft PR using explicitly selected narrow GitHub credentials. See the
+[publication runbook](docs/SPRINT-5.9.md) for permissions, commands, crash recovery,
+operator-state integrity limits and the pinned first experiment. Offline tests
+do not authorize live server publication, model execution, merges or deployment.
