@@ -1,0 +1,40 @@
+name: Offline activation contracts
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install distribution-verified age for public-fixture encrypted restore tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends age
+          age --version
+      - run: |
+          make lint test
+          python3 -O -m unittest discover -s tests -q
+          python3 src/activation_rehearsal.py --evidence-dir /tmp/fc55-evidence
+          set +e
+          python3 src/readiness.py check > /tmp/fc55-evidence/readiness.json
+          result=$?
+          set -e
+          test "$result" -eq 1
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/fc55-evidence/readiness.json'))
+          if r['ready'] or r['live_execution']:
+              raise SystemExit('Live activation must remain blocked')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: offline-activation-contract-evidence
+          path: /tmp/fc55-evidence
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,17 @@
+[Unit]
+Description=Fort Custer independent VM deadline and emergency watchdog
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 -B /opt/fort-custer/src/vm_watchdog.py
+TimeoutStartSec=45
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_UNIX
+IPAddressDeny=any

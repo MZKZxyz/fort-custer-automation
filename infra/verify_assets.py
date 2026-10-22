@@ -28,7 +28,9 @@ def verify(root):
 if __name__ == '__main__':
     root=Path('/opt/assets')
     verify(root)
-    for name in ('npm-cache','mongodb','browsers'):
+    for name in ('npm-cache','mongodb','browsers','native'):
+        if name == 'native' and not (root/name).exists():
+            continue # Older fixture images remain usable; real server QA refuses missing binding.
         shutil.copytree(root/name,Path('/opt')/name)
     Path('/opt/mongodb/mongod').chmod(0o555)
     shutil.rmtree(root)

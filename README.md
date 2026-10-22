@@ -171,3 +171,17 @@ The [operator runbook](docs/SPRINT-5.4-RUNBOOK.md) includes App permissions/setu
 QA asset preparation, recovery, hosting guidance and the server #3 canary checklist.
 [Provider capability evidence](docs/BUDGET-EVIDENCE.md) explains why billing remains
 a blocker. Live execution/publication are still unconditionally disabled.
+
+## Sprint 5.5: operational readiness package
+
+`python3 src/readiness.py check` emits mandatory readiness gates and intentionally
+exits 1. The [activation audit](docs/SPRINT-5.5-AUDIT.md) identifies remaining software,
+deployment, identity, financial and independent verification requirements. Follow
+the [sequential operator runbook](docs/SPRINT-5.5-RUNBOOK.md) after review.
+
+Run `python3 src/activation_rehearsal.py --evidence-dir /tmp/fc55-UNIQUE` to preserve
+the synthetic control-plane rehearsal's ledger, broker audit and candidate mirror.
+The VM interface is a contract integration, not a deployed microVM provider;
+the broker is synthetic-only. The frozen server #3 spec pins an exact commit/tree.
+Actual server subset results and full-suite blockers are recorded separately in
+`examples/sprint-5.5-validation.json`. No configuration enables live execution.

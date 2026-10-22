@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "observed_date": "2026-10-22",
+  "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+  "software_context": {
+    "automation_base": "bfbc4785d6e5d2e86f7fd70590cff6735f75062f",
+    "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+    "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+    "canary": "430d9143b5f575fd84e3d0da2987ef42fe3401a234a912f11c4f18fb622db36d",
+    "software": "284b1c54cf1f611f8527eea576be3bbdcd1ba7882c5d01e5fe9b77a1475c448e"
+  },
+  "live_execution": false,
+  "cloud_deployments": false,
+  "operational_ledger_modified": false,
+  "checks": [
+    {
+      "command": "make lint",
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -q (age v1.2.1 on PATH)",
+      "tests": 120,
+      "passed": 120,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "command": "python3 -O -m unittest discover -s tests -q (age v1.2.1 on PATH)",
+      "tests": 120,
+      "passed": 120,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "command": "systemd-analyze verify infra/fc55-controller.service infra/fc55-watchdog.service infra/fc55-watchdog.timer",
+      "exit_code": 0,
+      "deployed": false
+    },
+    {
+      "command": "python3 src/infrastructure.py build; python3 src/infrastructure.py rehearse",
+      "exit_code": 0,
+      "production_vm_attestation": false
+    },
+    {
+      "command": "python3 src/server_subset_qa.py /workspace/server-reviewed",
+      "exit_code": 0,
+      "full_server_suite": false
+    },
+    {
+      "command": "python3 src/activation_rehearsal.py --evidence-dir NEW_DIRECTORY",
+      "exit_code": 0,
+      "synthetic": true,
+      "durable_exports": true
+    },
+    {
+      "command": "python3 src/readiness.py check",
+      "exit_code": 1,
+      "blocked": 15
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "encrypted_backup": {
+    "tool": "age v1.2.1",
+    "archive_sha256": "7df45a6cc87d4da11cc03a539a7470c15b1041ab2b396af088fe9990f7c79d50",
+    "source": "https://github.com/FiloSottile/age/releases/tag/v1.2.1",
+    "public_fixture_blob": "c243a775a67f15848275adfae58b8db416909897",
+    "local_restore": "passed",
+    "ciphertext_tamper": "rejected",
+    "missing_identity": "rejected",
+    "offhost_restore": "not_verified",
+    "new_operational_keys": false
+  },
+  "full_server_suite": {
+    "status": "blocked",
+    "source": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+    "tree": "9015875cca2b85a845f7168ba237c5935e86445c",
+    "missing": [
+      "complete reviewed offline npm cache",
+      "ABI-compatible bcrypt native binding and shared libraries",
+      "test-only MongoDB binary and compatible libraries"
+    ],
+    "mongodb_url": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2404-8.0.16.tgz",
+    "download_http_status": 403,
+    "tests_not_run": [
+      "full node --test discovery",
+      "test/completions.test.js"
+    ]
+  },
+  "snapshots": {
+    "sprint-5.5-readiness.json": "ad8c1a2f6aadb0e255de94b031b3e55f84ced84da773142c003ce93c15082609",
+    "sprint-5.5-activation.json": "3002db01b23bdb00aac229b138d4fa40db9ee7bd62a405155e97b8a6b564d4d4",
+    "sprint-5.5-server-subset.json": "9bac22bfbafde6c5c40d6a8e24959f47610d10077f1d5cacf6bc285adf9f3d44",
+    "sprint-5.5-containers.json": "8d67297c933eb50f4428a22d5dbe30cfff98fe943d774573eebb432284cc9241"
+  },
+  "limitations": [
+    "Historical example snapshots are not readiness credentials",
+    "No production microVM host service or live Codex transport implemented/deployed",
+    "No strict provider $10/day and $3/task guarantee established",
+    "GitHub App lifecycle uses synthetic transport; no real App or credentials created",
+    "Independent off-host restore and security review remain outstanding"
+  ]
+}

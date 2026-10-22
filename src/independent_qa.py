@@ -14,7 +14,10 @@ from trust import canonical, digest, sha
 
 PROTECTED = ('.github', '.git', 'config', 'infra', 'migrations', 'AGENTS.md',
              'src/execution.py', 'src/qa.py', 'src/trust.py', 'src/secure_ledger.py',
-             'src/independent_qa.py', 'src/codex_adapter.py', 'src/publication.py')
+             'src/independent_qa.py', 'src/codex_adapter.py', 'src/publication.py',
+             'src/readiness.py', 'src/model_broker.py', 'src/vm_runtime.py',
+             'src/controller_service.py', 'src/vm_watchdog.py', 'src/ledger_backup.py',
+             'src/app_operations.py', 'src/server_qa.py', 'src/server_subset_qa.py', 'src/activation_rehearsal.py')
 RISKS = ('security','api','data','gameplay','deployment')
 SERVER_CHECKS = (
     ('analyzer', ('node','--test','test/analyzer.test.js')),

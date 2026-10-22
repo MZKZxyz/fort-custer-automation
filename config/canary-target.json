@@ -4,12 +4,15 @@
   "issue": 3,
   "task_branch": "task/maze-investigation-3",
   "area": "tools/maze-analyzer",
-  "source_commit": null,
+  "source_commit": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+  "source_tree": "9015875cca2b85a845f7168ba237c5935e86445c",
   "allowed_files": [
     "docs/maze-generation-rejections.md",
     "tools/maze-analyzer/README.md"
   ],
   "live_concurrency": 1,
   "publication_enabled": false,
-  "notes": "Review exact scope and pin a fresh source SHA at approval time. Investigate and document; production generator edits require a new scope grant. This template is not authorization."
+  "dispatch_approval_required": true,
+  "separate_publication_approval_required": true,
+  "notes": "Frozen investigation-only scope. Reproduce deterministic seeds with existing analyzer/tests and document findings in these two files. No production API, database migration, authentication, deployment or generator changes. A new source SHA or additional test file requires a separately reviewed scope grant. This specification is not authorization."
 }

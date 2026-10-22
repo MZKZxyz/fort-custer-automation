@@ -1,5 +1,28 @@
 # Spending controls: inspected 2026-10-22
 
+## Sprint 5.5 documentation update
+
+The current [project management documentation](https://help.openai.com/en/articles/9186755-managing-projects-in-the-api-platform)
+now describes monthly organization/project spend limits with an enforce option.
+It explicitly describes non-instantaneous enforcement and possible overshoot.
+This updates the earlier API-schema-only capability assessment below: absence
+of a budget endpoint in the inspected schema does **not** establish absence of
+dashboard enforcement. The documented monthly control still does not establish
+the required strict $10 per Los Angeles day or $3 per task bound.
+
+The [prepaid billing documentation](https://help.openai.com/en/articles/8264644-setting-up-and-managing-prepaid-api-billing)
+describes delayed cutoff and possible negative balance. Prepaid credit and
+auto-recharge limits cannot provide the required instantaneous financial bound.
+The [Usage/Costs API reference](https://platform.openai.com/docs/api-reference/usage)
+distinguishes token activity from invoice-reconciling Costs, with paginated
+time buckets/project attribution. It is a reconciliation input, not a spending
+cutoff or per-execution atomic invoice. No billing/admin credentials were used.
+
+Observed 2026-10-22. No account-specific contract, bounded overshoot guarantee,
+strict daily/task hard cap, finality SLA or fully attributed financial reconciler
+was established. The financial readiness gate remains blocked. No policy values
+were changed and no paid request was invoked.
+
 **Live dispatch remains unconditionally blocked.** No paid API was called and no
 provider account settings were changed. The strongest arrangement established in
 this sprint is the existing transactional $3 reservation / $10 daily accounting,

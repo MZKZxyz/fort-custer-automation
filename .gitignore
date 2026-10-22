@@ -5,3 +5,5 @@ __pycache__/
 .env
 .env.*
 examples/latest-report.md
+infra/qa-assets/*
+!infra/qa-assets/README.md

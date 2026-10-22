@@ -11,11 +11,20 @@ LIMIT = 4 * 1024 * 1024
 POLICIES = {
     'fixture': [('unit', [sys.executable, '-I', '-c',
         "import sys,unittest;sys.path.insert(0,'/workspace');r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('/workspace/test'));sys.exit(not r.wasSuccessful())"])],
+    'server-analyzer-subset': [
+        ('analyzer', ['node', '--test', 'test/analyzer.test.js']),
+        ('reports', ['node', '--test', 'test/report-validation.test.js']),
+        ('smoke', ['node', '--input-type=module', '-e', "import {execFileSync} from 'node:child_process';import assert from 'node:assert/strict';const run=()=>execFileSync(process.execPath,['tools/maze-analyzer/cli.js','--seed','sprint4-0'],{encoding:'utf8'});const a=run(),b=run();assert.equal(a,b);const r=JSON.parse(a);assert.equal(r.seed,'sprint4-0');assert.equal(r.solution.solvable,true)"]),
+        ('syntax', ['node', '--input-type=module', '-e', "import fs from 'node:fs';import {execFileSync} from 'node:child_process';function walk(p){for(const e of fs.readdirSync(p,{withFileTypes:true})){const f=p+'/'+e.name;if(e.isDirectory())walk(f);else if(f.endsWith('.js'))execFileSync(process.execPath,['--check','--',f]);}}walk('/workspace')"])
+    ],
     'MZKZxyz/fort-custer-server': [
         ('dependencies', ['npm', 'ci', '--offline', '--ignore-scripts', '--no-audit', '--no-fund']),
+        ('native-binding', ['python3', '-I', '-c', "import pathlib,shutil; p=pathlib.Path('/workspace/node_modules/bcrypt/lib/binding/napi-v3/bcrypt_lib.node');p.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile('/opt/native/bcrypt_lib.node',p)"]),
+        ('native-load', ['node', '--input-type=module', '-e', "import bcrypt from 'bcrypt';if(!bcrypt.compareSync('qa',bcrypt.hashSync('qa',4)))process.exit(1)"]),
         ('unit', ['node', '--test']),
         ('analyzer', ['node', '--test', 'test/analyzer.test.js']),
-        ('smoke', ['node', 'tools/maze-analyzer/cli.js', '--seed', 'sprint4-0'])],
+        ('integration', ['node', '--test', 'test/completions.test.js']),
+        ('smoke', ['node', '--input-type=module', '-e', "import {execFileSync} from 'node:child_process';import assert from 'node:assert/strict';const run=()=>execFileSync(process.execPath,['tools/maze-analyzer/cli.js','--seed','sprint4-0'],{encoding:'utf8'});const a=run(),b=run();assert.equal(a,b);const r=JSON.parse(a);assert.equal(r.seed,'sprint4-0');assert.equal(r.solution.solvable,true)"])],
     'MZKZxyz/fort-custer-client': [
         ('dependencies', ['npm', 'ci', '--offline', '--ignore-scripts', '--no-audit', '--no-fund']),
         ('unit', ['npm', 'test', '--', '--watchAll=false', '--runInBand']),
@@ -86,6 +95,9 @@ def main():
                     out.seek(0); err.seek(0)
                     stdout, stderr = out.read(8*1024*1024), err.read(8*1024*1024)
                 tests.append(dict(name=name, command=argv, exit_code=proc.returncode,
+                    stdout=stdout[:65536].decode('utf-8', errors='replace'),
+                    stderr=stderr[:65536].decode('utf-8', errors='replace'),
+                    stdout_truncated=len(stdout)>65536, stderr_truncated=len(stderr)>65536,
                     stdout_sha256=hashlib.sha256(stdout).hexdigest(),
                     stderr_sha256=hashlib.sha256(stderr).hexdigest(),
                     output=hashlib.sha256(stdout+stderr).hexdigest(),

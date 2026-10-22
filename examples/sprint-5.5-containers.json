@@ -1,0 +1,301 @@
+{
+  "synthetic": true,
+  "live_execution": false,
+  "images": {
+    "controller": "sha256:de4e3bca1acd31b1789267fafffde2e828be526352ffafcc4607860349aed44d",
+    "coding": "sha256:a47c5db2a81d3161d734eba728809ead6bae5bd1990ae14834414222e2b6f50b",
+    "qa": "sha256:099943105085dac5c41ef707c05d05668f9329cc4f13ad7b963b3cfb91d1952d"
+  },
+  "probes": {
+    "coding": {
+      "checks": {
+        "nondumpable_supervisor": true,
+        "nonroot": true,
+        "no_controller": true,
+        "no_socket": true,
+        "no_ledger": true,
+        "no_capabilities": true,
+        "no_new_privileges": true,
+        "file_limit": true,
+        "readonly:/etc/fc-escape": true,
+        "readonly:/opt/fc-escape": true,
+        "network:169.254.169.254": true,
+        "network:10.0.0.1": true,
+        "network:192.168.1.1": true,
+        "network:1.1.1.1": true,
+        "disk:/workspace": true,
+        "disk:/tmp": true,
+        "no_credentials": true
+      }
+    },
+    "qa": {
+      "checks": {
+        "nondumpable_supervisor": true,
+        "nonroot": true,
+        "no_controller": true,
+        "no_socket": true,
+        "no_ledger": true,
+        "no_capabilities": true,
+        "no_new_privileges": true,
+        "file_limit": true,
+        "readonly:/etc/fc-escape": true,
+        "readonly:/opt/fc-escape": true,
+        "network:169.254.169.254": true,
+        "network:10.0.0.1": true,
+        "network:192.168.1.1": true,
+        "network:1.1.1.1": true,
+        "disk:/workspace": true,
+        "disk:/tmp": true,
+        "no_credentials": true
+      }
+    }
+  },
+  "controller_smoke": true,
+  "selected": 1,
+  "candidate": "c3409774d71eac16ad11400a95e27e29bc269fc3",
+  "artifact_sha": "4746d087190f7a4b11e57e27a3176b2796513967",
+  "tests": [
+    {
+      "name": "isolated-suite",
+      "sha": "c3409774d71eac16ad11400a95e27e29bc269fc3",
+      "status": "passed",
+      "command": [
+        "policy",
+        "fixture"
+      ],
+      "output": "463c2f2539b84db3e5d27cd93e90cfbfd0e29e3f5910ec0b0fb384ac746d0435",
+      "artifact_sha256": "f792d763c7aabfeaff0efd9b5bab3368a2cb4bc49b086d9d88cac65dcafb7394",
+      "checks": [
+        {
+          "command": [
+            "/usr/local/bin/python3",
+            "-I",
+            "-c",
+            "import sys,unittest;sys.path.insert(0,'/workspace');r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('/workspace/test'));sys.exit(not r.wasSuccessful())"
+          ],
+          "exit_code": 0,
+          "name": "unit",
+          "output": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+          "status": "passed",
+          "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n",
+          "stderr_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+          "stderr_truncated": false,
+          "stdout": "",
+          "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_truncated": false
+        }
+      ],
+      "identity": "qa:container:65531",
+      "image": "sha256:099943105085dac5c41ef707c05d05668f9329cc4f13ad7b963b3cfb91d1952d"
+    }
+  ],
+  "failures": {
+    "invalid_authorization": true,
+    "live_execution": true,
+    "missing_billing": true,
+    "unreconciled_candidate": true,
+    "qa_rejection": true,
+    "invalid_publication": true,
+    "cancellation": true,
+    "crash": true,
+    "kill_switch": true
+  },
+  "events": [
+    "daily_plan",
+    "dispatch_authorized",
+    "claimed",
+    "usage_observed",
+    "termination_verified",
+    "billing_reconciled",
+    "candidate",
+    "independent_qa_approved",
+    "publication_authorized",
+    "pr_create_requested",
+    "draft_published"
+  ],
+  "audit_history": [
+    {
+      "id": 1,
+      "at": 1792670400.0,
+      "run": null,
+      "event": "daily_plan",
+      "payload": {
+        "day": "2026-10-22",
+        "fingerprint": "09853bffc3f9476db4a349e02a79d91345c9557d23fd3cb88bc90f4969899321"
+      }
+    },
+    {
+      "id": 2,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "dispatch_authorized",
+      "payload": {
+        "grant": "6400be0eba0e4a57aa7f4b21412b7c41",
+        "operator": "operator:fixture",
+        "spec": {
+          "allowed": [
+            "calc.py"
+          ],
+          "area": "maze",
+          "branch": "task/maze-3",
+          "repo": "synthetic/server",
+          "source": "66ca4222f2343683bc5533bf2d2ea3a78c0b6e8e",
+          "task": "synthetic/server#3"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "claimed",
+      "payload": {
+        "owner": "coding:isolated"
+      }
+    },
+    {
+      "id": 4,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "usage_observed",
+      "payload": {
+        "billed": false,
+        "digest": "71ae627017427b99fd9e932445658d3aa3fc7d29e4e399bfba53550061b9618b"
+      }
+    },
+    {
+      "id": 5,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "termination_verified",
+      "payload": {
+        "prior_state": "running"
+      }
+    },
+    {
+      "id": 6,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "billing_reconciled",
+      "payload": {
+        "cents": 25,
+        "evidence": "429b131d9b6ad06919d98e62d04f995ea52967395650c45e2bf7f060be7a1f35"
+      }
+    },
+    {
+      "id": 7,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "candidate",
+      "payload": {
+        "sha": "c3409774d71eac16ad11400a95e27e29bc269fc3"
+      }
+    },
+    {
+      "id": 8,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "independent_qa_approved",
+      "payload": {
+        "digest": "7f00bf7c0bbe710773c38d287278d33cb22c0548c8e2064cfde97bda09766ffe",
+        "report": {
+          "artifact_sha": "4746d087190f7a4b11e57e27a3176b2796513967",
+          "candidate": "c3409774d71eac16ad11400a95e27e29bc269fc3",
+          "diff": "3a54bd7510444598b1a28f6172e9a9b5f1fc3bea94151600a135ae3ccdaa38f4",
+          "files": [
+            "calc.py"
+          ],
+          "policy": "sprint-5.3-v1",
+          "reasons": [],
+          "run": "21a1f59f5a13410d82a29f5fad399170",
+          "source": "66ca4222f2343683bc5533bf2d2ea3a78c0b6e8e",
+          "synthetic": true,
+          "task": "synthetic/server#3",
+          "tests": [
+            {
+              "artifact_sha256": "f792d763c7aabfeaff0efd9b5bab3368a2cb4bc49b086d9d88cac65dcafb7394",
+              "checks": [
+                {
+                  "command": [
+                    "/usr/local/bin/python3",
+                    "-I",
+                    "-c",
+                    "import sys,unittest;sys.path.insert(0,'/workspace');r=unittest.TextTestRunner().run(unittest.defaultTestLoader.discover('/workspace/test'));sys.exit(not r.wasSuccessful())"
+                  ],
+                  "exit_code": 0,
+                  "name": "unit",
+                  "output": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+                  "status": "passed",
+                  "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n",
+                  "stderr_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+                  "stderr_truncated": false,
+                  "stdout": "",
+                  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                  "stdout_truncated": false
+                }
+              ],
+              "command": [
+                "policy",
+                "fixture"
+              ],
+              "identity": "qa:container:65531",
+              "image": "sha256:099943105085dac5c41ef707c05d05668f9329cc4f13ad7b963b3cfb91d1952d",
+              "name": "isolated-suite",
+              "output": "463c2f2539b84db3e5d27cd93e90cfbfd0e29e3f5910ec0b0fb384ac746d0435",
+              "sha": "c3409774d71eac16ad11400a95e27e29bc269fc3",
+              "status": "passed"
+            }
+          ]
+        },
+        "reviewer": "reviewer:fixture"
+      }
+    },
+    {
+      "id": 9,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "publication_authorized",
+      "payload": {
+        "binding": {
+          "candidate": "c3409774d71eac16ad11400a95e27e29bc269fc3",
+          "qa": "7f00bf7c0bbe710773c38d287278d33cb22c0548c8e2064cfde97bda09766ffe",
+          "spec": {
+            "allowed": [
+              "calc.py"
+            ],
+            "area": "maze",
+            "branch": "task/maze-3",
+            "repo": "synthetic/server",
+            "source": "66ca4222f2343683bc5533bf2d2ea3a78c0b6e8e",
+            "task": "synthetic/server#3"
+          }
+        },
+        "operator": "operator:fixture"
+      }
+    },
+    {
+      "id": 10,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "pr_create_requested",
+      "payload": {
+        "candidate": "c3409774d71eac16ad11400a95e27e29bc269fc3"
+      }
+    },
+    {
+      "id": 11,
+      "at": 1792670400.0,
+      "run": "21a1f59f5a13410d82a29f5fad399170",
+      "event": "draft_published",
+      "payload": {
+        "candidate": "c3409774d71eac16ad11400a95e27e29bc269fc3",
+        "url": "mock://draft/1"
+      }
+    }
+  ],
+  "draft": true,
+  "planning_holds_preserved": 1,
+  "billed_dollars": null,
+  "synthetic_final_cents": 25,
+  "isolation": "gVisor containers; not a hardened VM boundary"
+}
