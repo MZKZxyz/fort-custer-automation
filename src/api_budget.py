@@ -112,6 +112,15 @@ class Budget:
             self.event(db, 'operator-reconciled' if evidence else 'settled', ident,
                        dict(actual_nano_usd=actual, evidence=evidence, receipt=receipt))
 
+    def record_failure(self, ident, diagnostic):
+        """Append only diagnostic evidence; never alter accounting or release holds."""
+        from src.api_diagnostics import validate
+        clean = validate(diagnostic)
+        with self.tx(True) as db:
+            r = db.execute('SELECT actual FROM requests WHERE id=?', (ident,)).fetchone()
+            e.require(r is not None and r['actual'] is None, 'Unresolved reservation required')
+            self.event(db, 'request_failed_hold_retained', ident, clean)
+
     def reconcile(self, ident, actual, evidence):
         # Trusted operator only; not exposed to models or worker transports.
         e.require(e.sha(evidence), 'External billing/termination evidence digest required')

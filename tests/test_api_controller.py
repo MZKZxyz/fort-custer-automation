@@ -234,7 +234,7 @@ class TransportTests(unittest.TestCase):
         client.getresponse.return_value = result
         if error: client.request.side_effect = error
         with patch('src.api_controller.http.client.HTTPSConnection', return_value=client) as constructor:
-            c._http_child(pipe, str(self.key), b'{}')
+            c._http_child(pipe, str(self.key), e.canonical(c.payload('hello')).encode())
         return pipe, client, constructor
 
     def test_documented_endpoint_no_retry_and_key_only_header(self):
@@ -248,18 +248,19 @@ class TransportTests(unittest.TestCase):
         client.close.assert_called_once()
 
     def test_http_auth_rate_exhaustion_errors_no_body_exposure(self):
-        for status, category in [(401,'authentication'), (403,'authentication'),
-                                 (429,'rate-limit-or-exhaustion'), (500,'api-error'), (302,'api-error')]:
+        for status, category in [(401,'authentication'), (403,'permission_denied'), (400,'request_rejected'), (404,'model_or_endpoint_not_found'),
+                                 (429,'rate_limit_or_exhaustion'), (500,'provider_error'), (302,'redirect_rejected')]:
             with self.subTest(status=status):
                 pipe, client, _ = self.child(reply=self.marker.encode(), status=status)
-                self.assertEqual(pipe.send.call_args.args[0], ('error', category))
+                self.assertEqual(pipe.send.call_args.args[0], ('error', c.diagnostic(category, 'response_headers', 'response_received', status)))
                 self.assertEqual(client.request.call_count, 1)
 
     def test_exception_echo_and_oversize_sanitized(self):
         for raw, error in [(self.marker.encode(), None), (b'x'*(c.MAX_RESPONSE+1), None),
                            (b'', RuntimeError(self.marker))]:
             pipe, _, _ = self.child(raw, error=error)
-            self.assertEqual(pipe.send.call_args.args[0], ('error','unavailable-or-unknown'))
+            self.assertEqual(pipe.send.call_args.args[0][0], 'error')
+            self.assertIn(pipe.send.call_args.args[0][1]['category'], {'credential_echo','response_too_large','transport_failure'})
             self.assertNotIn(self.marker, str(pipe.send.call_args))
 
     def test_private_file_required_before_network(self):
@@ -276,10 +277,197 @@ class TransportTests(unittest.TestCase):
         receiver.poll.return_value = False
         process.pid = 10; process.is_alive.return_value = True
         with patch('src.api_controller.multiprocessing.get_context', return_value=context):
-            with self.assertRaises(c.APIUnavailable): c.ResponsesTransport(str(self.key)).send(b'{}')
+            with self.assertRaises(c.APIUnavailable): c.ResponsesTransport(str(self.key)).send(e.canonical(c.payload('hello')).encode())
         receiver.poll.assert_called_once_with(c.DEADLINE)
         process.terminate.assert_called_once(); process.kill.assert_called_once()
         self.assertEqual(process.start.call_count, 1)
+
+    def test_malformed_credentials_fail_before_connect_without_echo(self):
+        for data in (b'', b'\xff', b' key', b'key ', b'key\nsecond', b'key\x00', b'x'*513):
+            with self.subTest(data_length=len(data)):
+                self.key.write_bytes(data)
+                pipe, client, constructor = self.child()
+                constructor.assert_not_called()
+                self.assertEqual(pipe.send.call_args.args[0], ('error', c.diagnostic(
+                    'credential_format', 'credential', 'not_attempted')))
+                self.assertNotIn(self.marker, str(pipe.send.call_args))
+
+    def test_supported_request_contract_and_minimum_output_limit(self):
+        body = c.payload('Reply with OK.', 16)
+        c.validate_request(e.canonical(body).encode())
+        self.assertEqual(body['reasoning'], {'effort':'minimal'})
+        self.assertFalse(body['store']); self.assertEqual(body['tools'], [])
+        for invalid in [dict(body, temperature=0), dict(body, max_output_tokens=15),
+                        dict(body, reasoning={'effort':'none'}), dict(body, stream=True),
+                        dict(body, tools=[{'type':'web_search'}])]:
+            with self.assertRaises(c.APIUnavailable) as ctx:
+                c.ResponsesTransport(str(self.key)).send(e.canonical(invalid).encode())
+            self.assertEqual(ctx.exception.diagnostic['category'], 'local_request_invalid')
+            self.assertEqual(ctx.exception.diagnostic['dispatch'], 'not_attempted')
+
+    def test_http_unsupported_parameter_only_exports_reviewed_fields(self):
+        for parameter, expected in [('parallel_tool_calls','parallel_tool_calls'), (self.marker,None)]:
+            raw = e.canonical(dict(error=dict(code='unsupported_parameter', param=parameter,
+                message='Authorization Bearer '+self.marker))).encode()
+            pipe, client, _ = self.child(raw, status=400)
+            d = pipe.send.call_args.args[0][1]
+            self.assertEqual(d, c.diagnostic('unsupported_parameter','response_headers',
+                                            'response_received',400,expected))
+            self.assertNotIn(self.marker, e.canonical(d))
+            self.assertEqual(client.request.call_count, 1)
+
+    def test_http_status_survives_unreadable_error_body(self):
+        from unittest.mock import Mock
+        response = Mock(status=400)
+        response.read.side_effect = TimeoutError(self.marker)
+        d = c._http_error(response)
+        self.assertEqual(d['http_status'], 400)
+        self.assertEqual(d['category'], 'request_rejected')
+        self.assertNotIn(self.marker, e.canonical(d))
+
+    def test_connect_request_and_read_failures_have_distinct_dispatch_evidence(self):
+        from unittest.mock import Mock
+        import ssl
+        cases = [('connect', ConnectionRefusedError(self.marker), 'connect_failed', 'not_attempted', None),
+            ('connect', TimeoutError(self.marker), 'connect_timeout', 'not_attempted', None),
+            ('connect', ssl.SSLCertVerificationError(self.marker), 'tls_verification_failed', 'not_attempted', None),
+            ('request', ConnectionResetError(self.marker), 'transport_failure', 'may_have_been_sent', None),
+            ('getresponse', TimeoutError(self.marker), 'transport_timeout', 'may_have_been_sent', None),
+            ('read', TimeoutError(self.marker), 'transport_timeout', 'response_received', 200)]
+        for phase, error, category, dispatch, status in cases:
+            with self.subTest(phase=phase, category=category):
+                pipe, client, response = Mock(), Mock(), Mock(status=200)
+                client.getresponse.return_value = response
+                target = response.read if phase == 'read' else getattr(client, phase)
+                target.side_effect = error
+                with patch('src.api_controller.http.client.HTTPSConnection', return_value=client):
+                    c._http_child(pipe, str(self.key), e.canonical(c.payload('hello')).encode())
+                d = pipe.send.call_args.args[0][1]
+                self.assertEqual((d['category'], d['dispatch'], d['http_status']), (category,dispatch,status))
+                self.assertNotIn(self.marker, e.canonical(d))
+                if phase == 'connect': client.request.assert_not_called()
+                else: self.assertEqual(client.request.call_count,1)
+
+    def test_broken_diagnostic_pipe_never_propagates_sensitive_exception_context(self):
+        from unittest.mock import Mock
+        pipe, client = Mock(), Mock()
+        client.request.side_effect = RuntimeError(self.marker)
+        pipe.send.side_effect = BrokenPipeError(self.marker)
+        pipe.close.side_effect = OSError(self.marker)
+        with patch('src.api_controller.http.client.HTTPSConnection', return_value=client):
+            # A broken pipe cannot turn the suppressed original exception into a child traceback.
+            c._http_child(pipe, str(self.key), e.canonical(c.payload('hello')).encode())
+        client.close.assert_called_once()
+
+    def test_local_helper_construction_failure_is_proven_pre_dispatch(self):
+        with patch('src.api_controller.multiprocessing.get_context', side_effect=OSError(self.marker)):
+            with self.assertRaises(c.APIUnavailable) as ctx:
+                c.ResponsesTransport(str(self.key)).send(e.canonical(c.payload('hello')).encode())
+        self.assertEqual(ctx.exception.diagnostic['dispatch'], 'not_attempted')
+        self.assertEqual(ctx.exception.diagnostic['category'], 'helper_start_failed')
+
+    def test_helper_start_failure_and_lost_helper_are_not_equated(self):
+        from unittest.mock import Mock
+        for started in [False, True]:
+            context, receiver, sender, process = Mock(), Mock(), Mock(), Mock()
+            context.Pipe.return_value = (receiver, sender); context.Process.return_value = process
+            if started: receiver.recv.side_effect = EOFError(self.marker)
+            else: process.start.side_effect = OSError(self.marker)
+            with patch('src.api_controller.multiprocessing.get_context', return_value=context):
+                with self.assertRaises(c.APIUnavailable) as ctx:
+                    c.ResponsesTransport(str(self.key)).send(e.canonical(c.payload('hello')).encode())
+            self.assertEqual(ctx.exception.diagnostic['dispatch'], 'may_have_been_sent')
+            self.assertNotIn(self.marker, str(ctx.exception))
+
+    def test_untrusted_helper_diagnostic_fields_cannot_escape(self):
+        from unittest.mock import Mock
+        context, receiver, sender, process = Mock(), Mock(), Mock(), Mock()
+        context.Pipe.return_value = (receiver, sender); context.Process.return_value = process
+        receiver.recv.return_value = ('error', dict(category=self.marker, phase='helper',
+            dispatch='not_attempted', http_status=401, parameter=None))
+        with patch('src.api_controller.multiprocessing.get_context', return_value=context):
+            with self.assertRaises(c.APIUnavailable) as ctx:
+                c.ResponsesTransport(str(self.key)).send(e.canonical(c.payload('hello')).encode())
+        self.assertEqual(ctx.exception.diagnostic['category'], 'helper_protocol_invalid')
+        self.assertNotIn(self.marker, str(ctx.exception))
+
+
+class DiagnosticAccountingTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.b = Budget(Path(self.temp.name).resolve()/'budget.sqlite'); self.b.initialize()
+
+    def test_diagnostic_audit_never_changes_reservation_or_releases_hold(self):
+        ident = '33f477e596b0473b9c020ef32d69a505'
+        # This is a disposable offline fixture, never the operator's ledger.
+        self.b.reserve(ident, 'a'*64, 20_006_400)
+        with self.b.tx() as db: before = tuple(db.execute('SELECT * FROM requests').fetchone())
+        self.b.record_failure(ident, c.diagnostic('request_rejected','response_headers','response_received',400))
+        with self.b.tx() as db: after = tuple(db.execute('SELECT * FROM requests').fetchone())
+        self.assertEqual(before, after)
+        self.assertEqual(self.b.status()['unresolved_nano_usd'], 20_006_400)
+        self.assertEqual(Budget(self.b.path).status()['unresolved_requests'], 1)
+        with self.assertRaises(ValueError): self.b.reserve('b'*32, 'b'*64, 1)
+        self.assertEqual([r['kind'] for r in self.b.audit()], ['reserved','request_failed_hold_retained'])
+
+    def test_controller_classifies_validation_and_http_errors_without_settlement(self):
+        for i, (fake, category) in enumerate([
+                (Fake(raw=b'not JSON'), 'response_json_invalid'),
+                (Fake(raw=response(unexpected='sensitive')), 'response_schema_invalid'),
+                (Fake(error=c.APIUnavailable('unsupported_parameter','response_headers','response_received',400)),
+                 'unsupported_parameter')]):
+            b = Budget(self.b.path.parent/f'case-{i}.sqlite'); b.initialize()
+            controller = c.Controller(b, fake)
+            with self.assertRaises(c.APIUnavailable) as ctx:
+                controller._request('a'*32, c.payload('hello'), {'purpose':'offline'}, lambda:None)
+            self.assertEqual(ctx.exception.diagnostic['category'], category)
+            self.assertEqual(ctx.exception.request_id, 'a'*32)
+            self.assertTrue(ctx.exception.audit_recorded)
+            self.assertEqual(b.status()['unresolved_requests'], 1)
+            self.assertEqual(b.audit()[-1]['kind'], 'request_failed_hold_retained')
+            with self.assertRaises(ValueError):
+                controller._request('a'*32, c.payload('hello'), {'purpose':'offline'}, lambda:None)
+            self.assertEqual(fake.calls, 1)
+
+    def test_documented_reasoning_metadata_is_discarded_without_weakening_usage(self):
+        marker = 'SYNTHETIC_OPAQUE_CIPHERTEXT'
+        raw = response(output=[dict(id='rs_synthetic', type='reasoning', summary=[], content=[],
+                                    encrypted_content=marker, status='completed')])
+        result = c.receipt(raw, c.payload('hello'), c.DEFAULT_PRICING)
+        self.assertEqual(result['usage']['reasoning_tokens'],3)
+        self.assertNotIn(marker, e.canonical(result))
+        for unexpected in [dict(type='reasoning', summary=[], content=[{'type':'reasoning_text','text':marker}]),
+                           dict(type='reasoning', summary=[], encrypted_content={'attack':marker}),
+                           dict(type='function_call', name='shell')]:
+            with self.assertRaises(c.APIUnavailable):
+                c.receipt(response(output=[unexpected]),c.payload('hello'),c.DEFAULT_PRICING)
+
+    def test_existing_hold_blocks_connectivity_before_any_transport_call(self):
+        self.b.reserve('33f477e596b0473b9c020ef32d69a505', 'a'*64, 20_006_400)
+        before = self.b.path.read_bytes()
+        controller = c.Controller(self.b, c.ResponsesTransport('/never/read/key'))
+        with patch.object(c.ResponsesTransport, 'send', side_effect=AssertionError('Unauthorized retry')) as send:
+            with self.assertRaises(ValueError): controller.connectivity(operator_enabled=True)
+        send.assert_not_called()
+        self.assertEqual(before, self.b.path.read_bytes())
+
+    def test_cli_failure_receipt_exports_diagnostic_without_exception_strings(self):
+        from contextlib import redirect_stdout
+        import io
+        config = json.loads(Path('config/api-controller.example.json').read_text())
+        config['budget_file'] = str(self.b.path)
+        config['credential_file'] = '/never/read/key'
+        config['connectivity_enabled'] = True
+        path = self.b.path.parent/'config.json'; path.write_text(e.canonical(config)); path.chmod(0o600)
+        error = c.APIUnavailable('authentication','response_headers','response_received',401)
+        error.request_id = 'a'*32
+        out = io.StringIO()
+        with patch('sys.argv', ['api_controller','connectivity','--operator-connectivity','--config',str(path)]), \
+             patch.object(c.Controller, 'connectivity', side_effect=error), redirect_stdout(out):
+            self.assertEqual(c.main(),1)
+        result = json.loads(out.getvalue())
+        self.assertEqual(result['diagnostic']['http_status'],401)
+        self.assertFalse(result['retry']); self.assertTrue(result['hold_retained'])
 
 
 class ToolTests(unittest.TestCase):
