@@ -1,4 +1,6 @@
 """Fixed diagnostic vocabulary. Never serialize exception/provider strings."""
+from src.api_response_envelope import DIAGNOSTIC_FIELDS
+
 CATEGORIES = frozenset({'credential_unreadable', 'credential_format', 'local_request_invalid',
     'helper_start_failed', 'helper_disconnected', 'helper_deadline', 'helper_protocol_invalid',
     'connect_failed', 'connect_timeout', 'tls_verification_failed', 'transport_failure',
@@ -31,7 +33,8 @@ VALIDATION_RULES = {
 
 
 def diagnostic(category, phase='helper', dispatch='may_have_been_sent', http_status=None, parameter=None,
-               validation_section=None, validation_rule=None):
+               validation_section=None, validation_rule=None,
+               unrecognized_fields=None, other_unrecognized_fields=None):
     # Reconstruct all values from finite vocabularies; no arbitrary fields survive IPC.
     result = dict(category=category if category in CATEGORIES else 'controller_error',
         phase=phase if phase in PHASES else 'controller',
@@ -45,13 +48,29 @@ def diagnostic(category, phase='helper', dispatch='may_have_been_sent', http_sta
             result.update(validation_section=validation_section, validation_rule=validation_rule)
         else:
             result.update(validation_section='internal', validation_rule='unexpected_validation_error')
+    if unrecognized_fields is not None or other_unrecognized_fields is not None:
+        if (result['category'] == 'response_schema_invalid' and
+                result.get('validation_section') == 'envelope' and
+                result.get('validation_rule') == 'unknown_fields'):
+            # Select from our fixed names, never serialize provider-controlled keys.
+            names = unrecognized_fields if isinstance(unrecognized_fields, list) else []
+            result['unrecognized_fields'] = sorted({name for name in names
+                if isinstance(name, str) and name in DIAGNOSTIC_FIELDS})
+            result['other_unrecognized_fields'] = other_unrecognized_fields is True
     return result
 
 
 def validate(value):
     base = {'category','phase','dispatch','http_status','parameter'}
-    if not isinstance(value, dict) or set(value) not in (base, base | {'validation_section','validation_rule'}):
+    validation = base | {'validation_section','validation_rule'}
+    named = validation | {'unrecognized_fields','other_unrecognized_fields'}
+    if not isinstance(value, dict) or set(value) not in (base, validation, named):
         raise ValueError('Invalid diagnostic envelope')
+    if set(value) == named:
+        if (not isinstance(value['unrecognized_fields'], list) or
+                type(value['other_unrecognized_fields']) is not bool or
+                not (value['unrecognized_fields'] or value['other_unrecognized_fields'])):
+            raise ValueError('Invalid diagnostic envelope')
     clean = diagnostic(**value)
     if clean != value: raise ValueError('Invalid diagnostic vocabulary')
     return clean
@@ -59,8 +78,10 @@ def validate(value):
 
 class APIUnavailable(ValueError):
     def __init__(self, category, phase='helper', dispatch='may_have_been_sent', http_status=None, parameter=None,
-                 validation_section=None, validation_rule=None):
-        self.diagnostic = diagnostic(category, phase, dispatch, http_status, parameter, validation_section, validation_rule)
+                 validation_section=None, validation_rule=None,
+                 unrecognized_fields=None, other_unrecognized_fields=None):
+        self.diagnostic = diagnostic(category, phase, dispatch, http_status, parameter, validation_section, validation_rule,
+                                     unrecognized_fields, other_unrecognized_fields)
         self.request_id = None
         self.audit_recorded = False
         super().__init__(self.diagnostic['category'])

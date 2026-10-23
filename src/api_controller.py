@@ -14,6 +14,7 @@ import uuid
 
 from src import orchestration_evidence as e
 from src.api_budget import Budget
+from src import api_response_envelope as envelope
 from src.api_diagnostics import APIUnavailable, diagnostic, validate as validate_diagnostic, PARAMETERS
 
 MODEL = 'gpt-5-nano-2025-08-07'
@@ -217,6 +218,8 @@ def _fields(value, allowed, section, required=()):
 
 def _metadata(r, request):
     # These are discarded response echoes, never configuration or authority.
+    for name in envelope.DISCARDED_TEXT_FIELDS:
+        _schema(r.get(name) is None or isinstance(r[name], str), 'metadata','field_type')
     for name in ('id','user','safety_identifier','prompt_cache_key'):
         if name in r:
             _schema(r[name] is None and name != 'id' or isinstance(r[name], str), 'metadata','field_type')
@@ -378,13 +381,13 @@ def _output(r):
 def _receipt(raw, request, p):
     _schema(type(raw) is bytes and len(raw) <= MAX_RESPONSE, 'envelope','size')
     r = e.decode(raw)
-    allowed = {'id','object','created_at','status','error','incomplete_details','instructions',
-        'max_output_tokens','model','output','parallel_tool_calls','previous_response_id',
-        'reasoning','store','temperature','text','tool_choice','tools','top_p','truncation',
-        'usage','user','metadata','service_tier','background','max_tool_calls','safety_identifier',
-        'prompt_cache_key','prompt_cache_retention','top_logprobs','completed_at','conversation',
-        'prompt','prompt_cache_diagnostics','prompt_cache_options','access_programs','moderation'}
-    _fields(r, allowed, 'envelope')
+    _schema(isinstance(r, dict), 'envelope','shape')
+    unknown = set(r) - envelope.ACCEPTED_FIELDS
+    if unknown:
+        raise APIUnavailable('response_schema_invalid', 'response_validation', 'response_received', 200,
+            validation_section='envelope', validation_rule='unknown_fields',
+            unrecognized_fields=sorted(unknown & envelope.DIAGNOSTIC_FIELDS),
+            other_unrecognized_fields=bool(unknown - envelope.DIAGNOSTIC_FIELDS))
     _schema(r.get('object') == 'response', 'envelope','object')
     _schema(r.get('model') == MODEL, 'envelope','model')
     _metadata(r, request)

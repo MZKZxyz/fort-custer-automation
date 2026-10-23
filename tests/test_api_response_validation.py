@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 
 from src import api_controller as c, api_diagnostics as d, orchestration_evidence as e
 from src.api_budget import Budget
+from src import api_response_envelope as envelope
 
 FIXTURES = Path(__file__).parent/'fixtures'/'responses'
 
@@ -197,6 +198,113 @@ class ResponseSchemaTests(unittest.TestCase):
             self.assertNotIn('SYNTHETIC_',e.canonical(ctx.exception.diagnostic))
 
 
+class EnvelopeReviewTests(unittest.TestCase):
+    reject = ResponseSchemaTests.reject
+    def test_complete_reviewed_inventory_fixture(self):
+        r=fixture('envelope-all-fields.json')
+        self.assertEqual(set(r),envelope.ACCEPTED_FIELDS)
+        self.assertEqual(len(envelope.SDK_FIELDS),36)
+        self.assertEqual(len(envelope.OPENAPI_FIELDS),37)
+        self.assertEqual(envelope.OPENAPI_FIELDS-envelope.SDK_FIELDS,{'output_text'})
+        result=validate(r)
+        self.assertEqual(result,validate(fixture()))
+        self.assertNotIn('SYNTHETIC_',e.canonical(result))
+
+    def test_output_text_absent_null_string_discarded(self):
+        baseline=validate(fixture())
+        for value in (None,'','SYNTHETIC_SECRET_TEXT',
+                      '{"tools":[{"type":"function"}],"usage":{"total_tokens":0}}'):
+            r=fixture();r['output_text']=value
+            self.assertEqual(validate(r),baseline)
+
+    def test_reviewed_name_is_diagnosed_without_granting_acceptance(self):
+        r=fixture();r['output_text']='SYNTHETIC_SECRET_VALUE'
+        with patch.object(envelope,'ACCEPTED_FIELDS',envelope.ACCEPTED_FIELDS-{'output_text'}):
+            diag=self.reject(r,'envelope','unknown_fields')
+        self.assertEqual(diag['unrecognized_fields'],['output_text'])
+        self.assertFalse(diag['other_unrecognized_fields'])
+        self.assertNotIn('SYNTHETIC_',e.canonical(diag))
+
+    def test_output_text_type_strict(self):
+        for value in (False,0,1.5,[],{},['text'],{'text':'SYNTHETIC_SECRET'}):
+            r=fixture();r['output_text']=value
+            diag=self.reject(r,'metadata','field_type')
+            self.assertNotIn('SYNTHETIC_',e.canonical(diag))
+
+    def test_metadata_never_substitutes_for_nested_validation(self):
+        for section,rule,mutate in (
+            ('usage','shape',lambda r:r.pop('usage')),
+            ('usage','unknown_dimension',lambda r:r['usage'].update(audio_tokens=0)),
+            ('cached_tokens','cache_write_not_priced',lambda r:r['usage']['input_tokens_details'].update(cache_write_tokens=1)),
+            ('output','shape',lambda r:r.pop('output')),
+            ('output','item_type',lambda r:r.update(output=[{'type':'function_call','name':'SYNTHETIC_SECRET'}]))):
+            r=fixture('envelope-all-fields.json');mutate(r)
+            self.reject(r,section,rule)
+
+    def test_unknown_names_never_logged_and_official_request_names_diagnostic_only(self):
+        for name in envelope.REQUEST_ONLY_FIELDS:
+            for value in (None,{},'SYNTHETIC_SECRET'):
+                r=fixture();r[name]=value;r['SYNTHETIC_SECRET_DYNAMIC_NAME']='SYNTHETIC_SECRET_VALUE'
+                diag=self.reject(r,'envelope','unknown_fields')
+                self.assertEqual(diag['unrecognized_fields'],[name])
+                self.assertTrue(diag['other_unrecognized_fields'])
+                self.assertNotIn('SYNTHETIC_',e.canonical(diag))
+        r=fixture();r['SYNTHETIC_SECRET_DYNAMIC_NAME']=None
+        diag=self.reject(r,'envelope','unknown_fields')
+        self.assertEqual(diag['unrecognized_fields'],[])
+        self.assertTrue(diag['other_unrecognized_fields'])
+
+    def test_official_name_only_diagnostic_sorted_bounded_and_validated(self):
+        r=fixture();r.update({name:None for name in envelope.REQUEST_ONLY_FIELDS})
+        diag=self.reject(r,'envelope','unknown_fields')
+        self.assertEqual(diag['unrecognized_fields'],sorted(envelope.REQUEST_ONLY_FIELDS))
+        self.assertFalse(diag['other_unrecognized_fields'])
+        for changes in ({'unrecognized_fields':['SYNTHETIC_SECRET']},
+                        {'unrecognized_fields':['input','input']},
+                        {'unrecognized_fields':['stream','input']},
+                        {'unrecognized_fields':{'input':None}},
+                        {'unrecognized_fields':[{}]},
+                        {'other_unrecognized_fields':1},
+                        {'unrecognized_fields':[]},
+                        {'validation_section':'usage','validation_rule':'unknown_dimension'},
+                        {'SYNTHETIC_SECRET':'x'}):
+            with self.assertRaises(ValueError):d.validate(dict(diag,**changes))
+
+    def test_new_metadata_cannot_relax_security_retention_or_pricing(self):
+        for name,value,rule in [('store',True,'unsupported_configuration'),
+                ('background',True,'unsupported_configuration'),('parallel_tool_calls',True,'unsupported_configuration'),
+                ('tools',[{'type':'function'}],'unsupported_configuration'),
+                ('tool_choice','auto','unsupported_configuration'),
+                ('service_tier','priority','service_tier'),('prompt_cache_retention','24h','cache_policy'),
+                ('prompt_cache_options',{'mode':'implicit','ttl':'30m'},'unsupported_configuration'),
+                ('conversation',{'id':'SYNTHETIC_ID'},'unsupported_configuration'),
+                ('access_programs',{'cyber':'standard'},'unsupported_configuration'),
+                ('moderation',{},'unsupported_configuration')]:
+            r=fixture('envelope-all-fields.json');r[name]=value
+            self.reject(r,'metadata',rule)
+
+    def test_unknown_envelope_keeps_synthetic_hold_no_retry_no_metadata_persistence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            b=Budget(Path(tmp).resolve()/'budget.sqlite');b.initialize()
+            r=fixture('envelope-all-fields.json');r.update(stream=False,SYNTHETIC_SECRET_NAME='SYNTHETIC_SECRET_VALUE')
+            fake=Mock();fake.send.return_value=e.canonical(r).encode()
+            controller=c.Controller(b,fake);ident='b'*32
+            with self.assertRaises(c.APIUnavailable) as ctx:
+                controller._request(ident,c.payload('Reply with OK.',16),{'purpose':'offline'},lambda:None)
+            self.assertTrue(ctx.exception.audit_recorded)
+            self.assertEqual(b.status()['unresolved_nano_usd'],20_006_400)
+            with b.tx() as db:
+                row=dict(db.execute('SELECT * FROM requests').fetchone())
+                self.assertIsNone(row['actual']);self.assertIsNone(row['receipt'])
+            self.assertEqual([x['kind'] for x in b.audit()],['reserved','request_failed_hold_retained'])
+            self.assertEqual(json.loads(b.audit()[-1]['evidence'])['unrecognized_fields'],['stream'])
+            self.assertNotIn('SYNTHETIC_',e.canonical(b.audit()))
+            self.assertNotIn(b'SYNTHETIC_',b.path.read_bytes())
+            with self.assertRaises(ValueError):
+                controller._request(ident,c.payload('Reply with OK.',16),{'purpose':'offline'},lambda:None)
+            self.assertEqual(fake.send.call_count,1)
+
+
 class ValidationEvidenceTests(unittest.TestCase):
     def test_diagnostics_are_backward_compatible_and_reject_provider_controlled_labels(self):
         old=d.diagnostic('authentication','response_headers','response_received',401)
@@ -210,13 +318,17 @@ class ValidationEvidenceTests(unittest.TestCase):
     def test_structured_failure_roundtrips_through_ipc_without_values(self):
         diag=d.diagnostic('response_schema_invalid','response_validation','response_received',200,
                          validation_section='cached_tokens',validation_rule='cache_write_not_priced')
-        context,receiver,sender,process=Mock(),Mock(),Mock(),Mock()
-        context.Pipe.return_value=(receiver,sender);context.Process.return_value=process
-        receiver.recv.return_value=('error',diag)
-        with patch('src.api_controller.multiprocessing.get_context',return_value=context):
-            with self.assertRaises(c.APIUnavailable) as ctx:
-                c.ResponsesTransport('/never/read/key').send(e.canonical(c.payload('hello',16)).encode())
-        self.assertEqual(ctx.exception.diagnostic,diag)
+        named=d.diagnostic('response_schema_invalid','response_validation','response_received',200,
+            validation_section='envelope',validation_rule='unknown_fields',
+            unrecognized_fields=['stream'],other_unrecognized_fields=True)
+        for evidence in (diag,named):
+            context,receiver,sender,process=Mock(),Mock(),Mock(),Mock()
+            context.Pipe.return_value=(receiver,sender);context.Process.return_value=process
+            receiver.recv.return_value=('error',evidence)
+            with patch('src.api_controller.multiprocessing.get_context',return_value=context):
+                with self.assertRaises(c.APIUnavailable) as ctx:
+                    c.ResponsesTransport('/never/read/key').send(e.canonical(c.payload('hello',16)).encode())
+            self.assertEqual(ctx.exception.diagnostic,evidence)
 
     def test_audit_retains_structured_failure_and_original_reservation(self):
         # This UUID is copied into a disposable fixture ONLY; never the operator ledger.
@@ -249,7 +361,7 @@ class ValidationEvidenceTests(unittest.TestCase):
     def test_successful_fixture_reconciles_only_actual_usage_and_no_provider_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             b=Budget(Path(tmp).resolve()/'budget.sqlite');b.initialize()
-            fake=Mock();fake.send.return_value=e.canonical(fixture('reasoning.json')).encode()
+            fake=Mock();fake.send.return_value=e.canonical(fixture('envelope-all-fields.json')).encode()
             result=c.Controller(b,fake)._request('a'*32,c.payload('Reply with OK.',16),{'purpose':'offline'},lambda:None)
             self.assertEqual(b.status()['unresolved_requests'],0)
             self.assertEqual(b.status()['lifetime_encumbered_nano_usd'],result['estimated_cost_nano_usd'])
