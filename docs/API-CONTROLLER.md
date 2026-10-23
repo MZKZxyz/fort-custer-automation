@@ -23,7 +23,7 @@ GPT-4.1 nano's announced shutdown is October 23, 2026; it is not allowlisted.
 The controller accepts at most 2,048 UTF-8 input bytes and 64 generated tokens,
 including reasoning. Connectivity requests use the fixed prompt `Reply with OK.`,
 16 output tokens and minimal reasoning. An incomplete response is a valid billed
-outcome, not permission to retry. Empty reasoning summaries are accepted; no raw
+outcome, not permission to retry. Documented reasoning is validated and discarded; no raw
 reasoning, assistant text, refusals, IDs, metadata or headers enter receipts.
 
 A trusted spawned controller helper reads only the configured external private
@@ -42,7 +42,7 @@ Requests explicitly set `store=false`, `background=false`, `stream=false`,
 `tools=[]`, `tool_choice=none` and no parallel calls. Provider abuse monitoring
 and project/account retention policies still apply; `store=false` is not a
 claim of Zero Data Retention. No hosted tool, file, image, audio, Batch, Flex,
-priority processing, conversation continuation or reasoning payload is enabled.
+priority processing, conversation continuation or reasoning replay is enabled.
 Unexpected response fields or new pricing dimensions fail closed and retain the
 reservation until reviewed. Model output cannot become a command.
 
@@ -205,11 +205,13 @@ zero usage after several minutes is insufficient evidence to release it.
 A confirmed compatibility defect was found in the response validator: the
 current official Responses reasoning item schema includes nullable `content` and
 `encrypted_content`, with encrypted content documented as returned by default.
-The old validator rejected both fields. The corrected validator accepts empty/null
-reasoning content and bounded opaque encrypted strings, then discards them. It
+The old validator rejected both fields. The first correction accepted empty/null
+reasoning content and bounded opaque encrypted strings. The current validator
+also validates and discards documented reasoning text and summaries; see
+[response validation](API-RESPONSE-VALIDATION.md). It
 never decrypts, persists, forwards or reuses them. Documented message `phase` is
-accepted only with its defined enum values. Unknown fields, nonempty visible
-reasoning, malformed usage and executable output still fail closed. This defect
+accepted only with its defined enum values. Unknown fields, malformed usage and
+executable output still fail closed. This defect
 is a plausible cause of the original failure, **not a retrospective diagnosis**;
 the original sanitized receipt did not retain the required evidence.
 
@@ -300,3 +302,9 @@ Amounts above the reservation require an accounting/pricing investigation; the
 command must continue to refuse them. Reconciliation records evidence and never
 resends the request. Any future connectivity attempt requires separate explicit
 operator authorization after review. Live coding remains disabled.
+
+
+The second HTTP-200 validation investigation and exact compatibility policy are
+documented in [API-RESPONSE-VALIDATION.md](API-RESPONSE-VALIDATION.md). Its new
+fixed `validation_section` and `validation_rule` labels contain no provider
+fields, values, text or identifiers. Existing unresolved reservations remain held.

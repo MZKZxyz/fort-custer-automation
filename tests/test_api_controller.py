@@ -436,7 +436,7 @@ class DiagnosticAccountingTests(unittest.TestCase):
         result = c.receipt(raw, c.payload('hello'), c.DEFAULT_PRICING)
         self.assertEqual(result['usage']['reasoning_tokens'],3)
         self.assertNotIn(marker, e.canonical(result))
-        for unexpected in [dict(type='reasoning', summary=[], content=[{'type':'reasoning_text','text':marker}]),
+        for unexpected in [dict(type='reasoning', summary=[], content=[{'type':'function_call','text':marker}]),
                            dict(type='reasoning', summary=[], encrypted_content={'attack':marker}),
                            dict(type='function_call', name='shell')]:
             with self.assertRaises(c.APIUnavailable):
