@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 10
     env:
       # Avoid macOS /var and /tmp symlink ancestors in protected-store tests.
-      TMPDIR: ${{ runner.os == 'macOS' && '/private/tmp' || '/tmp' }}
+      TMPDIR: ${{ matrix.os == 'macos-latest' && '/private/tmp' || '/tmp' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
