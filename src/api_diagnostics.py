@@ -15,17 +15,42 @@ PARAMETERS = frozenset({'model','input','max_output_tokens','store','background'
     'reasoning.effort','prompt_cache_retention'})
 
 
-def diagnostic(category, phase='helper', dispatch='may_have_been_sent', http_status=None, parameter=None):
+VALIDATION_RULES = {
+    'envelope': {'size','shape','unknown_fields','object','model','json'},
+    'metadata': {'field_type','unsupported_configuration','service_tier','cache_policy'},
+    'completion': {'response_status','provider_error','incomplete_details'},
+    'usage': {'shape','unknown_dimension','token_type','token_bounds','total_mismatch'},
+    'cached_tokens': {'shape','unknown_dimension','token_type','token_bounds','cache_write_not_priced'},
+    'reasoning_tokens': {'shape','unknown_dimension','token_type','token_bounds'},
+    'output': {'shape','item_type','unknown_fields','item_status'},
+    'message': {'shape','unknown_fields','role','phase'},
+    'content': {'shape','unknown_fields','text_type','annotations','logprobs'},
+    'reasoning': {'shape','unknown_fields','summary','content','encrypted_content'},
+    'internal': {'unexpected_validation_error'},
+}
+
+
+def diagnostic(category, phase='helper', dispatch='may_have_been_sent', http_status=None, parameter=None,
+               validation_section=None, validation_rule=None):
     # Reconstruct all values from finite vocabularies; no arbitrary fields survive IPC.
-    return dict(category=category if category in CATEGORIES else 'controller_error',
+    result = dict(category=category if category in CATEGORIES else 'controller_error',
         phase=phase if phase in PHASES else 'controller',
         dispatch=dispatch if dispatch in DISPATCH else 'may_have_been_sent',
         http_status=http_status if type(http_status) is int and 100 <= http_status <= 599 else None,
         parameter=parameter if parameter in PARAMETERS else None)
 
+    if validation_section is not None or validation_rule is not None:
+        if (isinstance(validation_section, str) and isinstance(validation_rule, str) and
+                validation_rule in VALIDATION_RULES.get(validation_section, set())):
+            result.update(validation_section=validation_section, validation_rule=validation_rule)
+        else:
+            result.update(validation_section='internal', validation_rule='unexpected_validation_error')
+    return result
+
 
 def validate(value):
-    if not isinstance(value, dict) or set(value) != {'category','phase','dispatch','http_status','parameter'}:
+    base = {'category','phase','dispatch','http_status','parameter'}
+    if not isinstance(value, dict) or set(value) not in (base, base | {'validation_section','validation_rule'}):
         raise ValueError('Invalid diagnostic envelope')
     clean = diagnostic(**value)
     if clean != value: raise ValueError('Invalid diagnostic vocabulary')
@@ -33,8 +58,9 @@ def validate(value):
 
 
 class APIUnavailable(ValueError):
-    def __init__(self, category, phase='helper', dispatch='may_have_been_sent', http_status=None, parameter=None):
-        self.diagnostic = diagnostic(category, phase, dispatch, http_status, parameter)
+    def __init__(self, category, phase='helper', dispatch='may_have_been_sent', http_status=None, parameter=None,
+                 validation_section=None, validation_rule=None):
+        self.diagnostic = diagnostic(category, phase, dispatch, http_status, parameter, validation_section, validation_rule)
         self.request_id = None
         self.audit_recorded = False
         super().__init__(self.diagnostic['category'])

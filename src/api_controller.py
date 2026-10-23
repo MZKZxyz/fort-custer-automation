@@ -203,8 +203,180 @@ class ResponsesTransport:
                 if process.is_alive(): process.kill(); process.join(timeout=1)
 
 
+def _schema(condition, section, rule):
+    if not condition:
+        raise APIUnavailable('response_schema_invalid', 'response_validation', 'response_received', 200,
+                             validation_section=section, validation_rule=rule)
+
+
+def _fields(value, allowed, section, required=()):
+    _schema(isinstance(value, dict), section, 'shape')
+    _schema(set(value) <= set(allowed), section, 'unknown_fields')
+    _schema(set(required) <= set(value), section, 'shape')
+
+
+def _metadata(r, request):
+    # These are discarded response echoes, never configuration or authority.
+    for name in ('id','user','safety_identifier','prompt_cache_key'):
+        if name in r:
+            _schema(r[name] is None and name != 'id' or isinstance(r[name], str), 'metadata','field_type')
+    for name in ('created_at','completed_at','temperature','top_p'):
+        if name == 'created_at' and name in r or r.get(name) is not None:
+            _schema(e.finite(r[name]) and r[name] >= 0, 'metadata','field_type')
+    for name in ('max_output_tokens','max_tool_calls','top_logprobs'):
+        if r.get(name) is not None:
+            _schema(type(r[name]) is int and r[name] >= 0, 'metadata','field_type')
+    if r.get('max_output_tokens') is not None:
+        _schema(r['max_output_tokens'] == request['max_output_tokens'], 'metadata','unsupported_configuration')
+    for name in ('tools','tool_choice','parallel_tool_calls','store'):
+        if name in r:
+            expected = {'tools': [], 'tool_choice':'none','parallel_tool_calls':False,'store':False}[name]
+            _schema(e.canonical(r[name]) == e.canonical(expected), 'metadata','unsupported_configuration')
+    _schema(r.get('background') is None or r['background'] is False, 'metadata','unsupported_configuration')
+    _schema(r.get('service_tier') in (None,'default'), 'metadata','service_tier')
+    _schema(r.get('prompt_cache_retention') in (None,'in_memory'), 'metadata','cache_policy')
+    # Nonempty state/access/new-model cache settings require a separate review.
+    for name in ('conversation','previous_response_id','prompt','access_programs','moderation','prompt_cache_options'):
+        _schema(r.get(name) is None, 'metadata','unsupported_configuration')
+    _schema(r.get('truncation') in (None,'disabled'), 'metadata','unsupported_configuration')
+    meta = r.get('metadata')
+    _schema(meta is None or isinstance(meta, dict) and
+            all(isinstance(k,str) and isinstance(v,str) for k,v in meta.items()), 'metadata','field_type')
+    instructions = r.get('instructions')
+    _schema(instructions is None or isinstance(instructions,str) or instructions == [], 'metadata','field_type')
+    text = r.get('text')
+    if text is not None:
+        _schema(isinstance(text,dict) and set(text) <= {'format','verbosity'}, 'metadata','field_type')
+        _schema(text.get('format') in (None, {'type':'text'}) and
+                text.get('verbosity') in (None,'low','medium','high'), 'metadata','unsupported_configuration')
+    reasoning = r.get('reasoning')
+    if reasoning is not None:
+        _schema(isinstance(reasoning,dict) and set(reasoning) <=
+                {'effort','summary','generate_summary','context','mode'}, 'metadata','field_type')
+        _schema(reasoning.get('effort') in (None,'minimal','low','medium','high') and
+                reasoning.get('summary') in (None,'auto','concise','detailed') and
+                reasoning.get('generate_summary') in (None,'auto','concise','detailed') and
+                reasoning.get('context') in (None,'auto','current_turn','all_turns') and
+                reasoning.get('mode') in (None,'standard'), 'metadata','unsupported_configuration')
+    cache = r.get('prompt_cache_diagnostics')
+    if cache is not None:
+        _schema(isinstance(cache,dict), 'metadata','field_type')
+        kind = cache.get('type')
+        if kind == 'cache_miss':
+            _schema(set(cache) <= {'type','reason','cache_missed_tokens','comparison_reusable_tokens'} and
+                cache.get('reason') in ('model_changed','prompt_cache_key_changed','tools_changed',
+                    'text_format_changed','reasoning_effort_changed','verbosity_changed','context_compacted',
+                    'input_changed','service_tier_changed') and type(cache.get('cache_missed_tokens')) is int and
+                cache['cache_missed_tokens'] >= 0 and (cache.get('comparison_reusable_tokens') is None or
+                    type(cache['comparison_reusable_tokens']) is int and cache['comparison_reusable_tokens'] >= 0),
+                'metadata','field_type')
+        else:
+            _schema(kind in ('cache_hit','comparison_response_not_found','unavailable') and set(cache) == {'type'},
+                    'metadata','field_type')
+
+
+def _completion(r):
+    _schema(r.get('status') in ('completed','incomplete'), 'completion','response_status')
+    _schema(r.get('error') is None, 'completion','provider_error')
+    details = r.get('incomplete_details')
+    if details is not None:
+        _schema(isinstance(details,dict) and set(details) <= {'reason'}, 'completion','incomplete_details')
+        reason = details.get('reason')
+        _schema(reason is None or r['status'] == 'incomplete' and
+                reason in ('max_output_tokens','max_messages','content_filter','steered'),
+                'completion','incomplete_details')
+
+
+def _usage(r, request):
+    u = r.get('usage')
+    _schema(isinstance(u,dict), 'usage','shape')
+    keys = {'input_tokens','output_tokens','total_tokens','input_tokens_details','output_tokens_details'}
+    _schema(set(u) <= keys, 'usage','unknown_dimension')
+    _schema(set(u) == keys, 'usage','shape')
+    i, o, total = u['input_tokens'], u['output_tokens'], u['total_tokens']
+    _schema(all(type(v) is int for v in (i,o,total)), 'usage','token_type')
+    _schema(0 <= i <= CONTEXT and 0 <= o <= request['max_output_tokens'] and total >= 0,
+            'usage','token_bounds')
+    _schema(total == i+o, 'usage','total_mismatch')
+    cached = u['input_tokens_details']
+    _schema(isinstance(cached,dict) and 'cached_tokens' in cached, 'cached_tokens','shape')
+    _schema(set(cached) <= {'cached_tokens','cache_write_tokens'}, 'cached_tokens','unknown_dimension')
+    c = cached['cached_tokens']
+    _schema(type(c) is int, 'cached_tokens','token_type')
+    _schema(0 <= c <= i, 'cached_tokens','token_bounds')
+    if 'cache_write_tokens' in cached:
+        writes = cached['cache_write_tokens']
+        _schema(type(writes) is int, 'cached_tokens','token_type')
+        _schema(writes >= 0, 'cached_tokens','token_bounds')
+        # A documented zero-valued dimension adds no charge. Nonzero writes
+        # require a separately reviewed pricing model; never silently price them.
+        _schema(writes == 0, 'cached_tokens','cache_write_not_priced')
+    reason = u['output_tokens_details']
+    _schema(isinstance(reason,dict) and 'reasoning_tokens' in reason, 'reasoning_tokens','shape')
+    _schema(set(reason) == {'reasoning_tokens'}, 'reasoning_tokens','unknown_dimension')
+    n = reason['reasoning_tokens']
+    _schema(type(n) is int, 'reasoning_tokens','token_type')
+    _schema(0 <= n <= o, 'reasoning_tokens','token_bounds')
+    return i, o, c, n
+
+
+def _item_status(item, outer, nullable=False):
+    if 'status' in item:
+        value = item['status']
+        _schema(value is None and nullable or value in ('completed','incomplete') or
+                outer == 'incomplete' and value == 'in_progress', 'output','item_status')
+    if 'id' in item:
+        _schema(isinstance(item['id'],str), 'output','shape')
+
+
+def _reasoning_item(item):
+    _fields(item, {'id','type','summary','status','content','encrypted_content'}, 'reasoning', {'summary'})
+    _schema(isinstance(item['summary'],list), 'reasoning','summary')
+    for part in item['summary']:
+        _schema(isinstance(part,dict) and set(part) == {'type','text'} and
+                part['type'] == 'summary_text' and isinstance(part['text'],str), 'reasoning','summary')
+    if item.get('content') is not None:
+        _schema(isinstance(item['content'],list), 'reasoning','content')
+        for part in item['content']:
+            _schema(isinstance(part,dict) and set(part) == {'type','text'} and
+                    part['type'] == 'reasoning_text' and isinstance(part['text'],str), 'reasoning','content')
+    _schema(item.get('encrypted_content') is None or isinstance(item['encrypted_content'],str),
+            'reasoning','encrypted_content')
+    # All summaries, reasoning text, IDs and ciphertext are discarded, never
+    # stored, forwarded to another turn, decrypted, displayed or executed.
+
+
+def _output(r):
+    output = r.get('output')
+    _schema(isinstance(output,list) and len(output) <= MAX_OUTPUT, 'output','shape')
+    for item in output:
+        _schema(isinstance(item,dict), 'output','shape')
+        kind = item.get('type')
+        _schema(kind in ('message','reasoning'), 'output','item_type')
+        _item_status(item, r['status'], nullable=kind == 'reasoning')
+        if kind == 'reasoning':
+            _reasoning_item(item)
+            continue
+        _fields(item, {'id','type','status','role','content','phase'}, 'message', {'role','content'})
+        _schema(item['role'] == 'assistant', 'message','role')
+        _schema(item.get('phase') in (None,'commentary','final_answer'), 'message','phase')
+        _schema(isinstance(item['content'],list), 'message','shape')
+        for part in item['content']:
+            _schema(isinstance(part,dict), 'content','shape')
+            if part.get('type') == 'output_text':
+                _fields(part, {'type','text','annotations','logprobs'}, 'content', {'text'})
+                _schema(isinstance(part['text'],str), 'content','text_type')
+                _schema(part.get('annotations',[]) == [], 'content','annotations')
+                _schema(part.get('logprobs') is None or part['logprobs'] == [], 'content','logprobs')
+            elif part.get('type') == 'refusal':
+                _fields(part, {'type','refusal'}, 'content', {'refusal'})
+                _schema(isinstance(part['refusal'],str), 'content','text_type')
+            else:
+                _schema(False, 'content','shape')
+
+
 def _receipt(raw, request, p):
-    e.require(type(raw) is bytes and len(raw) <= MAX_RESPONSE, 'Response size rejected')
+    _schema(type(raw) is bytes and len(raw) <= MAX_RESPONSE, 'envelope','size')
     r = e.decode(raw)
     allowed = {'id','object','created_at','status','error','incomplete_details','instructions',
         'max_output_tokens','model','output','parallel_tool_calls','previous_response_id',
@@ -212,48 +384,14 @@ def _receipt(raw, request, p):
         'usage','user','metadata','service_tier','background','max_tool_calls','safety_identifier',
         'prompt_cache_key','prompt_cache_retention','top_logprobs','completed_at','conversation',
         'prompt','prompt_cache_diagnostics','prompt_cache_options','access_programs','moderation'}
-    e.require(isinstance(r, dict) and set(r) <= allowed and r.get('object') == 'response' and
-              r.get('model') == MODEL and r.get('status') in {'completed','incomplete'} and
-              r.get('error') is None and r.get('tools', []) == [] and
-              r.get('store', False) is False and r.get('background', False) is False and
-              r.get('conversation') is None and r.get('previous_response_id') is None and
-              r.get('prompt') is None and r.get('access_programs') is None and
-              r.get('moderation') is None and r.get('prompt_cache_options') is None and
-              r.get('service_tier', 'default') == 'default',
-              'Unexpected response; hold retained')
-    u = r.get('usage')
-    e.require(isinstance(u, dict) and set(u) == {'input_tokens','output_tokens','total_tokens',
-        'input_tokens_details','output_tokens_details'}, 'Invalid usage')
-    i, o = u['input_tokens'], u['output_tokens']
-    e.require(type(i) is int and type(o) is int and 0 <= i <= CONTEXT and
-              0 <= o <= request['max_output_tokens'] and type(u['total_tokens']) is int and
-              u['total_tokens'] == i+o, 'Unbounded usage')
-    e.require(isinstance(u['input_tokens_details'], dict) and
-              set(u['input_tokens_details']) == {'cached_tokens'} and
-              isinstance(u['output_tokens_details'], dict) and
-              set(u['output_tokens_details']) == {'reasoning_tokens'}, 'Unknown pricing dimension')
-    cached, reasoning = u['input_tokens_details']['cached_tokens'], u['output_tokens_details']['reasoning_tokens']
-    e.require(type(cached) is int and 0 <= cached <= i and type(reasoning) is int and
-              0 <= reasoning <= o, 'Invalid token detail')
-    output = r.get('output')
-    e.require(isinstance(output, list) and len(output) <= MAX_OUTPUT, 'Invalid output')
-    for item in output:
-        if isinstance(item, dict) and item.get('type') == 'reasoning':
-            e.require(set(item) <= {'id','type','summary','status','content','encrypted_content'} and
-                      item.get('summary') == [] and item.get('content') in (None, []) and
-                      (item.get('encrypted_content') is None or isinstance(item['encrypted_content'], str)),
-                      'Unexpected reasoning content')
-            continue
-        e.require(isinstance(item, dict) and set(item) <= {'id','type','status','role','content','phase'} and
-                  item.get('phase') in (None, 'commentary', 'final_answer') and
-                  item.get('type') == 'message' and item.get('role') == 'assistant' and
-                  isinstance(item.get('content'), list), 'Executable or unexpected model output rejected')
-        for part in item['content']:
-            e.require(isinstance(part, dict) and part.get('type') in {'output_text','refusal'} and
-                      set(part) <= {'type','text','annotations','logprobs','refusal'} and
-                      part.get('annotations', []) == [], 'Unexpected content rejected')
+    _fields(r, allowed, 'envelope')
+    _schema(r.get('object') == 'response', 'envelope','object')
+    _schema(r.get('model') == MODEL, 'envelope','model')
+    _metadata(r, request)
+    _completion(r)
+    i, o, cached, reasoning = _usage(r, request)
+    _output(r)
     cost = (i-cached)*p['input_nano_usd_per_token']+cached*p['cached_nano_usd_per_token']+o*p['output_nano_usd_per_token']
-    # No raw text, response id, errors, metadata, headers, or function arguments.
     return dict(status=r['status'], usage=dict(input_tokens=i, cached_input_tokens=cached,
         output_tokens=o, reasoning_tokens=reasoning), estimated_cost_nano_usd=cost,
         pricing_version=p['version'], model=MODEL, retry=False, tools_executed=0)
@@ -261,15 +399,17 @@ def _receipt(raw, request, p):
 
 def receipt(raw, request, p):
     try:
-        # JSON parse errors are distinct from valid JSON with an unsupported schema.
         e.decode(raw) if type(raw) is bytes and len(raw) <= MAX_RESPONSE else None
     except Exception:
-        raise APIUnavailable('response_json_invalid', 'response_validation', 'response_received', 200) from None
+        raise APIUnavailable('response_json_invalid', 'response_validation', 'response_received', 200,
+                             validation_section='envelope', validation_rule='json') from None
     try:
         return _receipt(raw, request, p)
+    except APIUnavailable:
+        raise
     except Exception:
-        raise APIUnavailable('response_schema_invalid', 'response_validation', 'response_received', 200) from None
-
+        raise APIUnavailable('response_schema_invalid', 'response_validation', 'response_received', 200,
+            validation_section='internal', validation_rule='unexpected_validation_error') from None
 
 class Controller:
     def __init__(self, budget, transport, prices=None):
