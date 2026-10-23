@@ -260,3 +260,13 @@ keep recommendations separate from reviewed tasks. No promotion, coding approval
 execution, publication or scheduling path is added. See the
 [configuration and operator workflow](docs/SPRINT-6.3.md) and
 [offline test evidence](docs/SPRINT-6.3-EVIDENCE.md).
+
+### Controlled catalog promotion (Sprint 6.4)
+
+`python3 -m src.catalog_promotion` stages an existing discovery proposal with a
+complete independently supplied task entry. A distinct, expiring terminal
+approval permits a single manual export. A separate operator import requires a
+second terminal review and installs through a locked, conflict-checked atomic
+replacement. High-risk work is escalated; no coding or publication approval is
+granted. See the [operator workflow and security limits](docs/SPRINT-6.4.md) and
+[offline validation evidence](docs/SPRINT-6.4-EVIDENCE.md).
