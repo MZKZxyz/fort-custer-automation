@@ -145,6 +145,9 @@ inference and no live readiness. Its Mac filesystem positive controls and five
 sentinel denials pass; its Linux sandbox positive controls fail and are reported
 as unavailable, never credited as OS isolation. This is unchanged scoped
 Sprint 6.11 evidence, not proof of complete API tool mediation or target deployment.
-Execution simulation and Verify planner dry run also passed at this checkpoint.
-The remaining full infrastructure/activation/rehearsal workflows were still
-running when these job logs were collected; no result is inferred for them here.
+All six workflows passed at this tested code checkpoint: Synthetic grant broker
+and local peer transport, Execution simulation, Verify planner dry run, Trusted
+canary offline rehearsal, Offline activation contracts and Offline infrastructure
+security (including normal/optimized regressions and its isolated rehearsal).
+The final follow-up commits change evidence documentation only; GitHub reruns
+checks on those commits as usual.
