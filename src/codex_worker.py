@@ -13,9 +13,27 @@ TOKENS = ('input_tokens', 'cached_input_tokens', 'output_tokens')
 def authentication_boundary():
     return dict(schema='codex-auth-boundary-v1', cli_version=CLI_VERSION,
                 state='blocked', account_files_forwarded=False,
-                reason='personal-account-auth-not-proven-inaccessible-to-generated-code',
-                required='supported credential-isolating model/tool relay or separately reviewed dedicated identity',
+                reason='no-reviewed-complete-tool-boundary-for-pinned-subscription-client',
+                required='reviewed complete remote-tool mediation; dedicated same-UID login is rejected',
                 api_fallback=False, paid_refills=False)
+
+
+def architecture_decision():
+    """Read-only blocker result, never an admission receipt or configuration."""
+    return dict(schema='codex-architecture-decision-v1', cli_version=CLI_VERSION,
+        outcome='technical-blocker', selected_interface='official-exec-server-stdio-offline-probe-only',
+        subscription_live_supported=False, live_workers=0, future_live_ceiling=1,
+        option_a='blocked-complete-tool-mediation-not-established',
+        option_b='rejected-same-uid-credential-access',
+        option_c='supported-api-function-calling-alternative-requires-separate-review',
+        missing=['complete executable-capability routing and immutable configuration enforcement',
+                 'live admission and single-use claim in authoritative broker',
+                 'credential-free isolated receiver and external termination watchdog',
+                 'independent isolated QA receiver and broker finalization',
+                 'separately authorized publisher intake',
+                 'target Mac OS denial, network and resource evidence',
+                 'API financial guarantees if API mode is separately selected'],
+        inference=False, automatic_retry=False, activation_override=False)
 
 
 def usage_outcome(raw):
