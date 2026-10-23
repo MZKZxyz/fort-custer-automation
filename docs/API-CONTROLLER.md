@@ -192,3 +192,111 @@ finalization → separately human-authorized draft publisher. Each external side
 effect must commit its dispatch intent before invocation and use its own replay,
 expiration, STOP and recovery protections. Existing synthetic evidence cannot
 substitute for live admission, OS isolation, watchdog or publication evidence.
+
+## Connectivity diagnostics and the unresolved first request
+
+The first operator attempt, local request `33f477e596b0473b9c020ef32d69a505`,
+reserved **20,006,400 nano-USD ($0.0200064)** and produced no settlement.
+This development change does not open, migrate, reconcile or retry the operator's
+ledger/request. Leave that hold intact. The old `blocked-or-unknown` receipt plus
+one reservation cannot establish whether the POST reached the provider. Dashboard
+zero usage after several minutes is insufficient evidence to release it.
+
+A confirmed compatibility defect was found in the response validator: the
+current official Responses reasoning item schema includes nullable `content` and
+`encrypted_content`, with encrypted content documented as returned by default.
+The old validator rejected both fields. The corrected validator accepts empty/null
+reasoning content and bounded opaque encrypted strings, then discards them. It
+never decrypts, persists, forwards or reuses them. Documented message `phase` is
+accepted only with its defined enum values. Unknown fields, nonempty visible
+reasoning, malformed usage and executable output still fail closed. This defect
+is a plausible cause of the original failure, **not a retrospective diagnosis**;
+the original sanitized receipt did not retain the required evidence.
+
+Request review confirms the documented Responses endpoint, pinned GPT-5 nano
+snapshot, `reasoning.effort=minimal`, `max_output_tokens=16`, text input, disabled
+tools/storage/background/streaming, default tier and `in_memory` retention.
+The generic payload builder now enforces the documented minimum of 16 output
+tokens, with the existing maximum of 64. The fixed connectivity request and its
+maximum reservation are unchanged. There is no automatic parameter removal,
+model substitution or fallback retry if an account rejects a parameter.
+
+References checked October 23, 2026:
+
+- [Responses creation contract](https://developers.openai.com/api/reference/resources/responses/methods/create)
+- [Official generated reasoning item schema](https://github.com/openai/openai-python/blob/main/src/openai/types/responses/response_reasoning_item.py)
+- [GPT-5 minimal reasoning example](https://developers.openai.com/cookbook/examples/gpt-5/gpt-5_new_params_and_tools)
+- [Model-specific cache retention](https://developers.openai.com/api/docs/guides/prompt-caching)
+
+### Diagnostic meanings
+
+Future failures print the local request ID and a fixed-vocabulary `diagnostic`:
+`category`, `phase`, `dispatch`, `http_status` (integer or null), and `parameter`
+(reviewed parameter name or null). The controller appends a
+`request_failed_hold_retained` audit event when possible; `audit_recorded=false`
+means that evidence could not be persisted. Diagnostic failure cannot release
+budget or redispatch. Existing ledgers need no schema migration. Historical
+requests without diagnostics remain unknown; new code does not backfill guessed
+failure records for them.
+
+| Evidence | Meaning / accounting action |
+| --- | --- |
+| `credential_unreadable` / `credential_format`, `not_attempted` | Protected file checks or local decoding failed before HTTP creation; no POST attempted; retain the reservation for explicit operator reconciliation |
+| `local_request_invalid`, `not_attempted` | Offline request contract rejected; no helper/network invocation; retain hold |
+| `connect_failed`, `connect_timeout`, `tls_verification_failed`, `not_attempted` | Explicit connection/TLS failed before POST; retain hold |
+| `request_rejected`, HTTP 400 | Provider returned a request rejection; raw body/message is discarded; retain hold |
+| `unsupported_parameter`, HTTP 400 | Bounded error JSON contains an allowlisted unsupported-parameter code; only a reviewed parameter name can be reported; retain hold |
+| HTTP 401/403/404/429/5xx/3xx | Fixed authentication/permission/model-or-endpoint/rate-limit-or-exhaustion/provider/redirect category with exact status; no redirect or retry; retain hold |
+| `response_json_invalid` / `response_schema_invalid`, HTTP 200 | An HTTP success body was received, but cannot be safely reconciled; potentially billed, retain full hold |
+| `transport_timeout` / `transport_failure`, `may_have_been_sent` | Failure during POST or while awaiting response; chargeable outcome unknown, retain hold |
+| `response_too_large` / `credential_echo` / body read failure, HTTP 200 | Response was received but cannot be accepted; retain hold |
+| `helper_deadline` / lost helper / invalid IPC | Missing reliable phase evidence; treat as ambiguous, retain hold |
+
+`response_received` proves an HTTP status was observed, **not a billing amount**.
+A 5xx response can still have an uncertain chargeable outcome. A 429 alone cannot
+distinguish throttling from exhausted credits. Error parsing never emits raw
+messages, unreviewed codes, arbitrary parameter strings, auth headers or response
+bodies. HTTP error-body parsing is bounded to 8 KiB; an unreadable/oversized body
+does not erase an already observed status. TLS verification, the fixed endpoint,
+20-second helper deadline, 10-second socket bounds and zero automatic retries
+remain enforced. An explicit connection is made before POST; implicit reconnects
+are disabled. An unknown top-level controller failure stays ambiguous.
+
+### Recovery for the existing uncertain request — no retry authorized
+
+1. Keep `connectivity_enabled=false`. Do not invoke connectivity, change ledger
+   paths, initialize a replacement, delete rows, reset dates, or create a new
+   request ID. No retry is authorized by this fix or by manual reconciliation.
+2. Use only the read-only `status` and `audit` commands above. Preserve a
+   consistent protected backup of the ledger and any SQLite sidecars. Record the
+   exact deployed code revision, reservation ID/time/amount, selected model and
+   pricing version. Confirm the trusted helper is no longer running. Never copy
+   the key or include it in evidence, support requests or screenshots.
+3. Check the **fort-custer-agents** project in the operator's OpenAI Usage and
+   Billing views. Verify organization/project and service-account/key filters,
+   time range, timezone (including the adjacent UTC calendar day), selected model,
+   and both token usage and costs. Allow reporting to finalize; several minutes
+   of zero usage is not a nonbilling attestation. Export matching finalized
+   usage/cost records when available. This local UUID is not a provider response
+   ID, and `store=false` means a response-retrieval probe is not a recovery method.
+4. Correlate finalized billing evidence with the attempt window. If the evidence
+   cannot rule out an accepted/billed request, keep the full hold and ask the
+   provider to resolve the uncertain attempt using nonsecret project/time/model
+   information. Do not invent an HTTP status from the absence of usage.
+5. Only after helper termination and sufficient evidence establish the actual
+   charge, the operator may explicitly reconcile it. Hash the protected,
+   nonsecret evidence document with SHA-256. Review the actual integer nano-USD
+   amount, which may be zero **only when supported by evidence**, then use the
+   existing manual `reconcile` command with the original local request ID:
+
+```sh
+python3 -m src.api_controller reconcile --config ~/fort-custer-local/api-controller.json \
+  --request-id 33f477e596b0473b9c020ef32d69a505 \
+  --actual-nano-usd REVIEWED_ACTUAL_INTEGER --evidence-sha256 REVIEWED_EVIDENCE_HEX64
+```
+
+This is an operator procedure, not an instruction for Codex/CI to execute now.
+Amounts above the reservation require an accounting/pricing investigation; the
+command must continue to refuse them. Reconciliation records evidence and never
+resends the request. Any future connectivity attempt requires separate explicit
+operator authorization after review. Live coding remains disabled.
