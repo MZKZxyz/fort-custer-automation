@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import sqlite3
 
-from src.catalog_promotion import intake, regular, read_policy
+from src.observation_validation import intake, regular, read_policy
 from src.issue_discovery import Store
 from src.local_catalog import resolve, REPOSITORIES
 
@@ -80,7 +80,7 @@ def bounded(db, sql):
 def catalog(path):
     policy, revision = read_policy(path)
     require(len(policy['catalog']['tasks']) <= LIMIT, 'Catalog bound exceeded')
-    return policy, revision, {i:resolve(policy, i)[0] for i in sorted(policy['catalog']['tasks'])}
+    return policy, revision, {i:resolve(policy, i, observation_only=True)[0] for i in sorted(policy['catalog']['tasks'])}
 
 
 def discovery(path):

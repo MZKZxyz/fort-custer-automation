@@ -1,0 +1,48 @@
+{
+  "schema": "daily-planning-v1",
+  "enabled": false,
+  "timezone": "America/Los_Angeles",
+  "local_start": "09:00",
+  "max_duration_seconds": 300,
+  "output": "/operator/daily",
+  "discovery_store": "/operator/daily/discovery.sqlite",
+  "discovery": {
+    "schema": "discovery-config-v1",
+    "repositories": [
+      "MZKZxyz/fort-custer-server",
+      "MZKZxyz/fort-custer-client"
+    ],
+    "stop_files": [
+      "/operator/controller/catalog-state/STOP",
+      "/operator/discovery/STOP"
+    ],
+    "page_size": 50,
+    "max_pages": 5,
+    "max_requests": 100,
+    "max_issues": 100,
+    "max_snapshots": 1000,
+    "max_events": 4000,
+    "max_storage_bytes": 8388608,
+    "weights": {
+      "severity": 20,
+      "user_impact": 10,
+      "reproducibility": 15,
+      "testing": 10,
+      "dependency": 5,
+      "evidence": 10,
+      "complexity": -10,
+      "regression_risk": -10
+    }
+  },
+  "orchestration": "/operator/observation/config.json",
+  "stop_files": [
+    "/operator/controller/catalog-state/STOP",
+    "/operator/discovery/STOP"
+  ],
+  "retain_reports": 14,
+  "max_cycles": 10000,
+  "max_storage_bytes": 67108864,
+  "max_report_bytes": 1048576,
+  "retry_limit": 0,
+  "backoff_seconds": 0
+}

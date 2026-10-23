@@ -22,9 +22,12 @@ def path_ok(name):
             not name.startswith('src/local_'))
 
 
-def resolve(policy, task_id):
+def resolve(policy, task_id, *, observation_only=False):
     """Resolve exclusively from the same protected policy that owns execution state."""
-    from src.local_runner import MODE, canonical, digest, git, manifest, source_files
+    if observation_only:
+        from src.source_observation import MODE, canonical, digest, git, manifest, source_files
+    else:
+        from src.local_runner import MODE, canonical, digest, git, manifest, source_files
     catalog = policy.get('catalog')
     if (not isinstance(catalog, dict) or set(catalog) != {'schema', 'tasks'} or
         type(catalog['schema']) is not int or catalog['schema'] != 1 or
