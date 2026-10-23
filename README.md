@@ -225,3 +225,14 @@ draft PR using explicitly selected narrow GitHub credentials. See the
 [publication runbook](docs/SPRINT-5.9.md) for permissions, commands, crash recovery,
 operator-state integrity limits and the pinned first experiment. Offline tests
 do not authorize live server publication, model execution, merges or deployment.
+
+### Reviewed local task catalog (Sprint 6.1)
+
+The manual local runner supports `task-list` and `task-prepare TASK_ID` from an
+operator-owned, versioned catalog embedded in the local policy. Exact repository,
+source manifest, reviewed issue snapshot, editable paths, coding instructions,
+independent Node checks and zero-API-spend subscription limits are bound to the
+existing controlling-terminal approval. New tasks have no publication path;
+the Sprint 5.9 publisher remains restricted to its original Issue #3 candidate.
+Production execution remains disabled. See [schema, workflow and trust limits](docs/SPRINT-6.1.md)
+and [offline evidence](docs/SPRINT-6.1-EVIDENCE.md).
