@@ -57,7 +57,7 @@ def git(root, *args):
         stderr=subprocess.PIPE, timeout=30)
 
 
-def source_files(source, sha):
+def source_files(source, sha, allowed=None):
     if not re.fullmatch('[0-9a-f]{40}', sha):
         raise ValueError('Exact SHA required')
     if git(source, 'rev-parse', sha+'^{commit}').decode().strip() != sha:
@@ -75,8 +75,8 @@ def source_files(source, sha):
             any(p == '.env' or p.startswith('.env.') and p not in ('.env.example', '.env.sample') for p in parts)):
             raise ValueError('Unsafe repository entry')
         files[name] = (int(mode, 8) & 0o777, git(source, 'cat-file', 'blob', obj))
-    if not set(ALLOWED) <= set(files):
-        raise ValueError('Expected analyzer files missing')
+    if not set(ALLOWED if allowed is None else allowed) <= set(files):
+        raise ValueError('Expected allowed files missing')
     return files
 
 
@@ -231,10 +231,11 @@ class Runner:
         if any(not Path(p[key]).is_absolute() for key in ('scratch', 'state', 'operator_home')):
             raise ValueError('Absolute operator paths required')
         self.scratch = Path(p['scratch']).resolve()
-        source_path = Path(p['repositories']['fort-custer-server']['source'])
-        if not source_path.is_absolute(): raise ValueError('Absolute local Git source required')
-        source = source_path.resolve()
-        forbidden = [source, Path(__file__).resolve().parents[1], Path.home()/'fort-custer-canary']
+        sources = [Path(repo['source']) for repo in p['repositories'].values()]
+        if not sources or any(not source.is_absolute() for source in sources):
+            raise ValueError('Absolute local Git sources required')
+        forbidden = [*[source.resolve() for source in sources],
+                     Path(__file__).resolve().parents[1], Path.home()/'fort-custer-canary']
         if not self.scratch.is_absolute() or any(self.scratch == x or self.scratch.is_relative_to(x) or x.is_relative_to(self.scratch) for x in forbidden):
             raise ValueError('Scratch must be separate from source, controller and canary')
         if any(self.state.is_relative_to(x) for x in forbidden):
@@ -269,6 +270,14 @@ class Runner:
         if r['expires'] <= self.clock(): raise ValueError('Approval expired')
         if digest(r['spec']) != r['binding'] or r['spec']['policy'] != digest(json.loads(self.policy_path.read_text())):
             raise ValueError('Approval binding changed')
+        if 'protocol' in r['spec']:
+            from src.local_catalog import PROTOCOL, resolve
+            if r['spec']['protocol'] != PROTOCOL:
+                raise ValueError('Unsupported task protocol')
+            spec, files = resolve(self.policy, r['spec']['task_id'])
+            if canonical(spec) != canonical(r['spec']):
+                raise ValueError('Reviewed task changed')
+            return files
         p = self.policy['repositories']['fort-custer-server']
         if (r['spec']['issue'] != 3 or r['spec']['repo'] != 'fort-custer-server' or
             r['spec']['source'] != p['sha'] or r['spec']['branch'] != p['branch'] or
@@ -291,6 +300,32 @@ class Runner:
         r = dict(id=uuid.uuid4().hex, state='pending', spec=spec, binding=digest(spec),
                  expires=self.clock()+600, history=[dict(event='prepared', at=self.clock())])
         with self.tx() as db: self.save(db, r)
+        return r
+
+    def task_list(self):
+        from src.local_catalog import resolve
+        catalog = self.policy.get('catalog')
+        if (not isinstance(catalog, dict) or set(catalog) != {'schema', 'tasks'} or
+            type(catalog['schema']) is not int or catalog['schema'] != 1 or
+            not isinstance(catalog['tasks'], dict)):
+            raise ValueError('Unsupported reviewed catalog')
+        tasks = catalog['tasks']
+        # Listing fails closed on malformed entries, too.
+        return [resolve(self.policy, task)[0] for task in sorted(tasks)]
+
+    def task_prepare(self, task_id):
+        from src.local_catalog import resolve
+        spec, _ = resolve(self.policy, task_id)
+        r = dict(id=uuid.uuid4().hex, state='pending', spec=spec, binding=digest(spec),
+                 expires=self.clock()+600, history=[dict(event='prepared', at=self.clock())])
+        with self.tx() as db:
+            self.check(r)
+            # A catalog identifier is single-use, including expired or failed tasks.
+            # Retain the original record; no implicit restart or reauthorization.
+            if any(json.loads(row[0])['spec'].get('task_id') == task_id
+                   for row in db.execute('SELECT document FROM runs')):
+                raise ValueError('Catalog task already prepared; operator reconciliation required')
+            self.save(db, r)
         return r
 
     def inspect(self, run):
@@ -319,7 +354,9 @@ class Runner:
             if r['state'] != 'approved': raise ValueError('Task already claimed or unapproved')
             if any(json.loads(row[0])['state'] == 'running' for row in db.execute('SELECT document FROM runs')):
                 raise ValueError('One execution maximum; unresolved restart hold')
-            r['state'] = 'running'; r['deadline'] = self.clock()+self.policy['timeout_seconds']
+            timeout = (r['spec']['limits']['timeout_seconds'] if 'protocol' in r['spec']
+                       else self.policy['timeout_seconds'])
+            r['state'] = 'running'; r['deadline'] = self.clock()+timeout
             r['history'].append(dict(event='claimed', at=self.clock())); self.save(db, r)
         # Durable claim precedes all subprocesses. A crash retains a hold, never retries.
         start = time.monotonic()
@@ -328,16 +365,20 @@ class Runner:
         try:
             with tempfile.TemporaryDirectory(prefix='coding-', dir=self.scratch) as work:
                 root = Path(work); materialize(files, root)
-                r['usage'] = LocalCLI(self.policy).run(root, PROMPT, stopped, self.policy['timeout_seconds'])
+                r['usage'] = LocalCLI(self.policy).run(root, r['spec']['prompt'], stopped, timeout)
                 if stopped(): raise ValueError('cancelled')
                 candidate = snapshot(root)
                 changed = sorted(k for k in files.keys() | candidate.keys() if files.get(k) != candidate.get(k))
                 r['files'] = changed
-                if set(changed) != set(ALLOWED) or any(k not in candidate for k in ALLOWED):
+                allowed = r['spec']['allowed']
+                if (not changed or not set(changed) <= set(allowed) or
+                    any(k not in candidate for k in allowed) or
+                    ('protocol' not in r['spec'] and set(changed) != set(ALLOWED))):
                     raise ValueError('Unexpected file modification or empty candidate')
                 r['candidate_hash'] = manifest(candidate)
-                r['qa'] = self.qa(files, candidate, stopped,
-                    self.policy['timeout_seconds']-(time.monotonic()-start))
+                remaining = timeout-(time.monotonic()-start)
+                r['qa'] = (self.qa(files, candidate, stopped, remaining, spec=r['spec'])
+                           if 'protocol' in r['spec'] else self.qa(files, candidate, stopped, remaining))
                 if stopped() or any(c['code'] or c['reason'] for c in r['qa']):
                     raise ValueError('Independent QA failed or cancelled')
                 r['state'] = 'validated'
@@ -350,13 +391,13 @@ class Runner:
         with self.tx() as db: self.save(db, r)
         return r
 
-    def qa(self, files, candidate, stopped, remaining):
+    def qa(self, files, candidate, stopped, remaining, spec=None):
         with tempfile.TemporaryDirectory(prefix='qa-', dir=self.scratch) as work:
             root = Path(work); materialize(files, root)
             git(root, 'init', '-q')
             git(root, 'add', '--all', '--force')
             git(root, '-c', 'user.name=Local QA', '-c', 'user.email=qa@local', 'commit', '-qm', 'Input')
-            for name in ALLOWED:
+            for name in (spec['allowed'] if spec else ALLOWED):
                 mode, data = candidate[name]; (root/name).write_bytes(data); (root/name).chmod(mode)
             if manifest({k:v for k,v in snapshot(root).items() if not k.startswith('.git/')}) != manifest(candidate):
                 raise ValueError('QA candidate identity mismatch')
@@ -366,16 +407,20 @@ class Runner:
             git(root, '-c', 'user.name=Local QA', '-c', 'user.email=qa@local', 'commit', '-qm', 'Candidate')
             candidate_revision = git(root, 'rev-parse', 'HEAD').decode().strip()
             node = Path(self.policy['node'])
-            if not node.is_absolute() or hashlib.sha256(node.read_bytes()).hexdigest() != self.policy['node_sha256']:
+            if (not node.is_absolute() or node.is_symlink() or not node.is_file() or
+                not os.access(node, os.X_OK) or
+                hashlib.sha256(node.read_bytes()).hexdigest() != self.policy['node_sha256']):
                 raise ValueError('Trusted Node binary changed')
             report = []
             end = time.monotonic()+remaining
-            commands = [('diff', ['/usr/bin/git', 'diff', '--check', 'HEAD^', 'HEAD']), *CHECKS]
-            for label, command in commands:
+            checks = ([(c['name'], c['argv'], c['timeout_seconds']) for c in spec['checks']]
+                      if spec else [(label, command, 2400) for label, command in CHECKS])
+            commands = [('diff', ['/usr/bin/git', 'diff', '--check', 'HEAD^', 'HEAD'], 30), *checks]
+            for label, command, check_timeout in commands:
                 left = end-time.monotonic()
                 if left <= 0: raise ValueError('timeout')
                 command = [str(node), *command[1:]] if command[0] == 'node' else command
-                out = supervise(command, root, environment(), timeout=min(left, 2400), cancelled=stopped)
+                out = supervise(command, root, environment(), timeout=min(left, check_timeout), cancelled=stopped)
                 report.append(dict(name=label, command=command, code=out['code'], reason=out['reason'],
                     stdout=out['stdout'].decode(errors='replace'), stderr=out['stderr'].decode(errors='replace')))
             # QA must not create even ignored artifacts or mutate its inputs.
@@ -406,8 +451,14 @@ def main():
     for cmd in ('inspect', 'approve', 'execute', 'publish-prepare', 'publish-inspect', 'publish-approve', 'publish-cancel'):
         sub.add_parser(cmd).add_argument('run')
     sub.add_parser('cancel')
+    sub.add_parser('task-list')
+    sub.add_parser('task-prepare').add_argument('task_id')
     args = parser.parse_args(); runner = Runner(args.policy, args.state)
-    if args.command == 'prepare':
+    if args.command == 'task-list':
+        result = {'tasks': runner.task_list()}
+    elif args.command == 'task-prepare':
+        result = runner.task_prepare(args.task_id)
+    elif args.command == 'prepare':
         result = runner.prepare(args.issue, args.repo, json.loads(Path(args.issue_file).read_text()))
     elif args.command.startswith('publish-'):
         from src.local_publication import Publications

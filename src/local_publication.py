@@ -34,6 +34,8 @@ def reconstruct(runner, run):
     """Read durable evidence; never depend on the original temporary workspace."""
     r = runner.inspect(run)
     spec = r['spec']
+    if 'protocol' in spec:
+        raise ValueError('Catalog tasks cannot use the Sprint 5.9 publisher')
     policy = json.loads(runner.policy_path.read_text())
     if (r['state'] != 'validated' or digest(spec) != r['binding'] or
         spec['policy'] != digest(policy) or spec['mode'] != MODE or
