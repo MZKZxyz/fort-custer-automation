@@ -249,3 +249,14 @@ and historical Issue #3 evidence remain separate. See the
 [operator workflow and security limits](docs/SPRINT-6.2.md) and
 [offline test evidence](docs/SPRINT-6.2-EVIDENCE.md). No production execution,
 automatic approval, merge or deployment is enabled.
+
+### Read-only issue discovery (Sprint 6.3)
+
+`python3 -m src.issue_discovery` manually collects bounded public issue evidence
+from the two configured Fort Custer repositories and produces deterministic,
+ranked **untrusted proposals** in a separate SQLite database. Anonymous GET-only
+collection, offline analysis, immutable revisions and explicit retention limits
+keep recommendations separate from reviewed tasks. No promotion, coding approval,
+execution, publication or scheduling path is added. See the
+[configuration and operator workflow](docs/SPRINT-6.3.md) and
+[offline test evidence](docs/SPRINT-6.3-EVIDENCE.md).

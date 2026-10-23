@@ -1,0 +1,22 @@
+{
+  "schema": "discovery-config-v1",
+  "repositories": ["MZKZxyz/fort-custer-server", "MZKZxyz/fort-custer-client"],
+  "stop_files": ["/operator/local-state/STOP", "/operator/discovery-state/STOP"],
+  "page_size": 50,
+  "max_pages": 5,
+  "max_requests": 200,
+  "max_issues": 100,
+  "max_snapshots": 10000,
+  "max_events": 20000,
+  "max_storage_bytes": 67108864,
+  "weights": {
+    "severity": 20,
+    "user_impact": 10,
+    "reproducibility": 15,
+    "testing": 10,
+    "dependency": 5,
+    "evidence": 10,
+    "complexity": -10,
+    "regression_risk": -10
+  }
+}
