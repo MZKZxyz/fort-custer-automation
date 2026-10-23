@@ -5,8 +5,10 @@ import contextlib
 import io
 import json
 import multiprocessing
+import os
 from pathlib import Path
 import sqlite3
+import stat
 import tempfile
 import threading
 import unittest
@@ -49,6 +51,9 @@ class Fixture:
                 issue_snapshot=dict(entry['issue_snapshot'], html_url=f'https://github.com/{identity}/issues/3'))
             f.config['catalog']['tasks'] = {task:entry}
             f.reload(); f.path.chmod(0o600)
+            # The inherited controller fixture creates SQLite using the host's
+            # defaults; coordinator evidence must be private regardless of umask.
+            (Path(f.config['state'])/'local.sqlite').chmod(0o600)
             self.config['stop_files'].append(str(Path(f.config['state'])/'STOP'))
             self.approvals.append(f.approved(task)); self.policies.append(f.path)
         self.now = max(f.now for f in self.fixtures)
@@ -72,6 +77,26 @@ class CoordinatorTests(unittest.TestCase):
     def setUp(self):
         self.f = Fixture(); self.addCleanup(self.f.close)
         self.co = self.f.coordinator
+
+    def test_fixture_private_evidence_under_permissive_umask(self):
+        previous = os.umask(0)
+        try:
+            fixture = Fixture(count=1)
+            self.addCleanup(fixture.close)
+            controller = fixture.fixtures[0]
+            protected = [fixture.coordinator.path, controller.path,
+                         Path(controller.config['state'])/'local.sqlite']
+            for path in protected:
+                with self.subTest(path=path.name):
+                    self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+                    self.assertEqual(c.e.regular(path), path.absolute())
+            for path in (fixture.root, controller.root,
+                         Path(controller.config['state']), Path(controller.config['scratch'])):
+                self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o700)
+            # Exercise the production permission validator during authorization too.
+            self.assertEqual(fixture.claim()['task'], 'task-0')
+        finally:
+            os.umask(previous)
 
     def test_three_workers_and_verified_independent_evidence(self):
         claims = [self.f.claim(i) for i in range(3)]
