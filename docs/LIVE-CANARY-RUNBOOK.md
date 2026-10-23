@@ -1,5 +1,96 @@
 # One manually initiated development canary — preparation only
 
+## Sprint 6.11 — technical blocker and operator stop
+
+The [architecture decision](CODEX-AUTHENTICATION-ARCHITECTURE.md) governs this
+release. Subscription activation is blocked; a same-UID dedicated login is
+rejected. The supported API alternative requires separate implementation,
+security and financial review. No executable live invocation command exists.
+
+Use `/bin/bash`. First follow steps 1–4 below to select the reviewed release,
+inventory historical holds, inspect identities/ACLs and provision VM prerequisites
+manually. The required identities remain controller, coding relay/guest,
+independent QA relay/guest and publisher. Private homes/state require ownership
+by their own principals, directories 0700 and files 0600; review ACLs and groups
+as well. Never share a writable source checkout. Export only verified exact Git
+objects to a disposable guest; no .git, host home or credentials may cross.
+
+An administrator must select/provision a supported VM product, disable host
+shares/clipboard/agents, bound vCPU/RAM/disk/processes and network, authenticate
+the relay-to-guest transport and verify external whole-guest termination. No
+verified vendor-specific installation commands are available from this Linux
+environment. This release creates no accounts, services or firewall rules.
+
+### Executable offline diagnosis on the target Mac
+
+From the reviewed checkout after setting `FC_EVIDENCE` in step 1, supply an
+absolute path to the already installed native official Codex **0.163.0** binary.
+Do not auto-upgrade or log in as fc-worker. The diagnostic creates a temporary
+HOME/CODEX_HOME containing only invalid marker bytes. No model or login runs.
+
+```sh
+read -r -p "Absolute reviewed native Codex 0.163.0 binary: " FC_CODEX_PROBE_BINARY
+test -f "$FC_CODEX_PROBE_BINARY" && test -x "$FC_CODEX_PROBE_BINARY" || exit 1
+export FC_CODEX_PROBE_BINARY
+python3 -m src.codex_boundary_probe --codex "$FC_CODEX_PROBE_BINARY" > "$FC_EVIDENCE/codex-boundary.json"
+test "$?" -eq 1 || exit 1
+python3 -m json.tool "$FC_EVIDENCE/codex-boundary.json"
+FC_REQUIRE_CODEX_SANDBOX=1 python3 -m unittest discover -s tests -p test_codex_boundary.py -v
+python3 - <<'PY'
+import json
+from src.codex_worker import architecture_decision
+print(json.dumps(architecture_decision(), indent=2))
+PY
+```
+
+Readable synthetic auth/policy when sandbox is omitted is a counterexample,
+not proof of safe execution. Explicit sandbox denials count only after permitted
+read/write controls succeed. A skip or unavailable sandbox blocks deployment.
+Do not change host Codex socket-directory permissions to make this pass.
+Even a Mac pass does not clear complete tool routing or broker software blockers.
+
+### Refresh task and stop before authentication or dispatch
+
+Follow step 8 below. The refreshed Sprint 6.11 server SHA is still
+`d82c272b47486161bf9f37508b69fe3240678655`; all 33 blobs were verified against
+Git object hashes. Direct analyzer execution passed 14 tests; mutating
+`directions.right[1]` still breaks movement. No source files were changed.
+Retain the proposed two-file allowlist and immutable trusted QA oracle. Select
+a matching fresh issue; the template is not approval and issue 3's historical
+authorization cannot be reused.
+
+The exact remaining prerequisites, in order, are:
+
+1. Resolve A's complete tool mediation with an officially supported interface,
+   or separately review C and its API financial policy. Never copy auth caches
+   into workers or provision credentials before that boundary exists.
+2. Implement versioned live broker admission and single-use claims, bound to
+   independent human approval, exact source/instructions/allowlist/QA, identity
+   and deadline. Reconcile historical holds without importing approvals.
+3. Install the fixed credential-free receiver and replay fencing; independently
+   test STOP/cancellation/watchdog termination and retained ambiguous slots.
+4. Install independent QA reconstruction/execution/finalization and protected
+   publisher intake. Coding cannot approve QA or publication.
+5. Retain actual target-Mac filesystem, IPv4/IPv6/DNS/host-network, resource,
+   crash-termination and credential-separation evidence; review the full
+   tool/configuration inventory and pinned versions.
+6. Review a new activation release supplying the missing commands. Obtain a
+   fresh terminal confirmation for one exact grant, invoke once and supervise
+   continuously. Stop on exhaustion/unknown failure; no retry/refill/fallback.
+7. Verify that grant's exact candidate through independent QA. Obtain separate
+   human authorization for publisher reconstruction and one draft PR.
+
+Items 6–7 define the supervised manual path after a future reviewed release;
+there is no honest shell command for them today. No receipt/env/config override,
+standalone `codex exec`, legacy runner or direct executor RPC substitutes for
+the missing broker path. No live canary is launched by this PR.
+
+Termination/cleanup follows step 14: sticky STOP, independent administrator
+guest power-off/absence evidence, preserved ledgers/artifacts, then deletion of
+confirmed disposable guest storage. The diagnostic kills/reaps its own process
+group and deletes temporary fixtures; this is not a VM watchdog. Never merge,
+deploy, schedule live execution or automatically publish.
+
 ## Sprint 6.10 Mac procedure — mandatory stop before live work
 
 **This release cannot activate a real worker.** The steps below are a

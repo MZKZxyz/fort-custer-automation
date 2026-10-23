@@ -89,6 +89,8 @@ def health(policy_path, coordinator_path=None, now=None, *, broker_path=None, br
     report['unsupported_resource_controls'] = ['hard_cpu', 'hard_memory', 'hard_disk', 'network_egress']
     from src.codex_worker import authentication_boundary
     report['codex_authentication'] = authentication_boundary()
+    from src.codex_worker import architecture_decision
+    report['codex_architecture'] = architecture_decision()
     # No caller-supplied attestations are accepted. Even all software tests
     # passing cannot stand in for target-Mac evidence or reviewed activation.
     report['activation_prerequisites'] = {

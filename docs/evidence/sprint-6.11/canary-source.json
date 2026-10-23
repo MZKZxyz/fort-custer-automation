@@ -1,0 +1,12 @@
+{
+  "analyzer_passed": 14,
+  "analyzer_tests": 14,
+  "blobs_verified": 33,
+  "live_invocation": false,
+  "mutation_defect_reproduced": true,
+  "repository": "MZKZxyz/fort-custer-server",
+  "source": "d82c272b47486161bf9f37508b69fe3240678655",
+  "source_manifest": "1b76b0476f0cee84cefa72d93fccd4dc94f7304d85f3520beb97ee8b0dbe561a",
+  "source_modified": false,
+  "tree": "2148e1f387d8eff643c1672762fae3b3c3924c76"
+}

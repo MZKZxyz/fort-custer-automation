@@ -1,0 +1,24 @@
+{
+  "activation_override": false,
+  "automatic_retry": false,
+  "cli_version": "0.163.0",
+  "future_live_ceiling": 1,
+  "inference": false,
+  "live_workers": 0,
+  "missing": [
+    "complete executable-capability routing and immutable configuration enforcement",
+    "live admission and single-use claim in authoritative broker",
+    "credential-free isolated receiver and external termination watchdog",
+    "independent isolated QA receiver and broker finalization",
+    "separately authorized publisher intake",
+    "target Mac OS denial, network and resource evidence",
+    "API financial guarantees if API mode is separately selected"
+  ],
+  "option_a": "blocked-complete-tool-mediation-not-established",
+  "option_b": "rejected-same-uid-credential-access",
+  "option_c": "supported-api-function-calling-alternative-requires-separate-review",
+  "outcome": "technical-blocker",
+  "schema": "codex-architecture-decision-v1",
+  "selected_interface": "official-exec-server-stdio-offline-probe-only",
+  "subscription_live_supported": false
+}

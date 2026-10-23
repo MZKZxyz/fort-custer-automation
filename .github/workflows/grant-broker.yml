@@ -32,3 +32,14 @@ jobs:
         run: python -O -m unittest discover -s tests -p test_activation_readiness.py -q
       - name: Synthetic subprocess transfer and independent QA
         run: PYTHONPATH=.:tests python tests/test_grant_broker.py --demo
+      - name: Install pinned official Codex for offline executor probes
+        run: npm install --prefix "$RUNNER_TEMP/fc-codex" @openai/codex@0.163.0
+      - name: Actual executor and OS filesystem boundary (no login or inference)
+        shell: bash
+        run: |
+          FC_CODEX_PROBE_BINARY="$(find "$RUNNER_TEMP/fc-codex/node_modules" -type f -path '*/vendor/*/codex/codex' | head -n 1)"
+          test -n "$FC_CODEX_PROBE_BINARY"
+          export FC_CODEX_PROBE_BINARY FC_REQUIRE_CODEX_SANDBOX=1
+          python -m unittest discover -s tests -p test_codex_boundary.py -v
+      - name: Full regression suite
+        run: python -m unittest discover -s tests -q

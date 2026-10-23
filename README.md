@@ -351,6 +351,13 @@ No real Codex worker, application publication, merge or deployment is performed.
 
 ## Sprint 6.10: single-worker activation preparation
 
+Sprint 6.11 delivers the [authentication technical-blocker decision](docs/CODEX-AUTHENTICATION-ARCHITECTURE.md)
+and a real offline official-executor diagnostic. Same-UID dedicated login is
+rejected; experimental remote execution is not claimed to mediate every tool.
+Live execution stays blocked. See [Sprint 6.11](docs/SPRINT-6.11.md),
+[evidence](docs/SPRINT-6.11-EVIDENCE.md) and the updated
+[Mac stop/activation procedure](docs/LIVE-CANARY-RUNBOOK.md).
+
 [Sprint 6.10](docs/SPRINT-6.10.md) adds complete source/candidate handoff bundles,
 an external QA client with distinct peer identities, durable synthetic subscription
 exhaustion/unknown holds, a read-only historical inventory and eight separate

@@ -1,5 +1,40 @@
 # Worker isolation deployment profile
 
+## Sprint 6.11 enforcement result
+
+The [authentication decision](CODEX-AUTHENTICATION-ARCHITECTURE.md) rejects a
+logged-in worker sharing its identity with generated commands. A dedicated user
+or VM protects other identities, not that worker's own auth. Real official
+exec-server stdio probes read synthetic mode-0600 auth from both `/bin/cat`
+and filesystem RPC. Optional RPC sandbox contexts are not a mandatory receiver
+policy: omitting one reads a synthetic protected controller sentinel.
+
+The probe also attempts five protected reads and approved/unapproved file writes
+through the real platform sandbox helper. It requires successful permitted
+read/write controls first. In this managed cloud the helper fails because its
+app-server socket directory is not accessible with required ownership/mode.
+Denial fields are therefore null, not passing. Do not change permissions on the
+host Codex socket directory to make a probe pass. Target Mac isolation is still
+unverified. CI now runs the actual pinned executor probe on Linux and macOS;
+`FC_REQUIRE_CODEX_SANDBOX=1` makes missing enforcement a failure there.
+
+| Capability | Diagnostic / future live policy |
+| --- | --- |
+| Inference | None in diagnostic; trusted supported client only in future design |
+| Tool transport | Real local stdio exec-server; never remote registration or OAuth relay |
+| Commands | Fixed synthetic `/bin/cat`; no model commands or user-selected argv |
+| Filesystem | Fresh temporary fixtures only; explicit denied synthetic secret directories and one writable file for OS probes |
+| Network / MCP | No network request, listener, registry, MCP server or model access in diagnostic; future coding/QA guests require externally tested deny-all egress |
+| Hooks, plugins, extra tools, agents | None invoked by diagnostic; all require explicit prohibition/mediation before live admission |
+| Grant authority | Diagnostic has none; live entrypoints reject before claim/startup |
+| Resource / termination | Bounded diagnostic RPC/output and owned process group only; VM-wide external enforcement unimplemented |
+
+Historical synthetic tests cover scope, replay, forged completion, worker starts,
+STOP and cancellation. They are policy/protocol evidence, not successful OS
+attacks against a deployed coding VM. The [evidence matrix](SPRINT-6.11-EVIDENCE.md)
+keeps those distinctions explicit. No controller ledger, publisher secret,
+production credential or real application secret is used in the new probes.
+
 ## Sprint 6.10 credential conclusion and Mac installation contract
 
 **Direct personal-account CLI authentication is unsupported for this worker.**
