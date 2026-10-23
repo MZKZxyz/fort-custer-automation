@@ -53,6 +53,10 @@ for event in [{'type':'thread.started','thread_id':'fake'}, {'type':'turn.starte
 
 class LocalRunnerTests(unittest.TestCase):
     def setUp(self):
+        # Protocol fixtures execute only the generated inert FAKE program. This
+        # mock preserves historical coverage; it is not isolation evidence.
+        gate = patch('src.integration_control.block_live_dispatch')
+        gate.start(); self.addCleanup(gate.stop)
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
         source = self.root/'source'; source.mkdir()

@@ -159,6 +159,8 @@ class LocalCLI:
         self.policy = policy
 
     def run(self, workspace, prompt, cancelled, timeout):
+        from src.integration_control import block_live_dispatch
+        block_live_dispatch()
         p = self.policy
         binary = Path(p['cli'])
         if not binary.is_absolute() or not binary.is_file() or binary.is_symlink() or not os.access(binary, os.X_OK):
@@ -348,6 +350,8 @@ class Runner:
         self.state.joinpath('STOP').touch(mode=0o600)
 
     def execute(self, run):
+        from src.integration_control import block_live_dispatch
+        block_live_dispatch()
         with self.tx() as db:
             r = self.read(db, run); files = self.check(r)
             if not self.policy['enabled']: raise ValueError('Local mode disabled')

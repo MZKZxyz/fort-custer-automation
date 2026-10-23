@@ -215,7 +215,7 @@ class Coordinator:
             now = self.clock()
             d = dict(task=task, execution=a['execution'], authorization=e.digest(a), slot=slot, worker=worker,
                      token=uuid.uuid4().hex, generation=db.execute('SELECT COUNT(*) FROM events').fetchone()[0]+1,
-                     started=now, deadline=now+a['spec']['limits']['timeout_seconds'],
+                     started=now, deadline=min(a['expires'], now+a['spec']['limits']['timeout_seconds']),
                      cancellation=False, stop=False, mode='synthetic-only')
             e.require(not stopped(self.c), 'STOP before claim commit')
             self._event(db, task, 'claimed', d)
@@ -287,6 +287,7 @@ class Coordinator:
         """Fixed inert adapter only. Never imports or calls LocalCLI/CodexAdapter."""
         e.require(type(worker) is SyntheticWorker, 'Only fixed synthetic workers supported; external sandbox required for live execution')
         from src.local_runner import materialize, snapshot
+        from src import worker_handoff as handoff
         self.guard(claim)
         with self.tx(True) as db:
             row = self._owned(db, claim, {'claimed'})
@@ -298,6 +299,7 @@ class Coordinator:
         metrics = {k: None for k in (*TOKENS, 'execution_seconds', 'qa_seconds', 'artifact_bytes', 'exit_status', 'peak_memory_bytes', 'cpu_seconds')}
         qa_start = None
         try:
+            request_bytes = handoff.request(a, claim)
             root = Path(self.c['scratch'])
             root.mkdir(mode=0o700, exist_ok=True)
             e.require(not root.is_symlink() and not root.stat().st_mode & 0o077, 'Private scratch required')
@@ -310,7 +312,8 @@ class Coordinator:
                 e.require(manifest(files) == a['source_manifest'], 'Source manifest changed')
                 materialize(files, checkout)
                 self.guard(claim)
-                result = worker.run(checkout, a)
+                # A detached copy of the narrow request, with no privileged paths.
+                result = worker.run(checkout, e.decode(request_bytes))
                 for key in (*TOKENS, 'exit_status'):
                     if type(result.get(key)) is int and (key == 'exit_status' or result[key] >= 0):
                         metrics[key] = result[key]
@@ -330,10 +333,14 @@ class Coordinator:
                 artifact = dict(source_manifest=manifest(files), candidate_manifest=manifest(candidate),
                     files={k: [candidate[k][0], candidate[k][1].hex()] for k in changed}, changed=changed,
                     workspace=work, checkout=str(checkout), token=claim['token'])
+                response_bytes = handoff.response(request_bytes, {k: candidate[k] for k in changed})
+                captured = handoff.ingest(request_bytes, response_bytes, self.clock())
+                e.require(captured == {k: candidate[k] for k in changed}, 'Transfer changed output')
                 with self.tx(True) as db:
                     self._owned(db, claim, {'running'})
                     self._event(db, claim['task'], 'qa', dict(token=claim['token'], artifact=artifact,
-                                artifact_digest=e.digest(artifact)))
+                                artifact_digest=e.digest(artifact),
+                                handoff_request=request_bytes.decode(), handoff_response=response_bytes.decode()))
                 qa_start = time.monotonic()
                 qa = verify_candidate(a, artifact, policy, lambda: self.guard(claim),
                                       self.c['max_artifact_bytes'], claim['deadline']-self.clock())
@@ -415,6 +422,14 @@ def observations(config):
         if row['state'] == 'completed':
             qa_event = next(x['document'] for x in row['events'] if x['kind'] == 'qa')
             final = row['events'][-1]['document']; artifact = qa_event['artifact']; qa = final['qa']
+            if 'handoff_request' in qa_event or 'handoff_response' in qa_event:
+                from src import worker_handoff as handoff
+                req = handoff.request(row['authorization'], row['claim'])
+                e.require(req.decode() == qa_event['handoff_request'], 'Handoff request changed')
+                captured = handoff.ingest(req, qa_event['handoff_response'].encode(),
+                                         row['claim']['started'])
+                e.require({k: [v[0], v[1].hex()] for k, v in captured.items()} == artifact['files'],
+                          'Handoff artifact changed')
             policy, _, specs = e.catalog(row['authorization']['policy_path'])
             e.require(specs[task] == row['authorization']['spec'] and
                       e.digest(policy) == row['authorization']['policy_digest'], 'Current reviewed policy differs from evidence')

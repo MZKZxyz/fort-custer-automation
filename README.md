@@ -1,5 +1,10 @@
 # Fort Custer Automation — Sprint 5.1
 
+Current safety boundary: Sprint 6.8 blocks all local live coding dispatch pending
+shared grant migration and verified external isolation. Earlier experiment
+instructions below are historical; see the
+[current runbook](docs/LIVE-CANARY-RUNBOOK.md) before operational use.
+
 Read-only GitHub Issues ingestion and persistent advisory planning for
 `MZKZxyz/fort-custer-client` and `MZKZxyz/fort-custer-server`.
 Python 3.11+; standard library only. Execution remains disabled. The planner never
@@ -303,3 +308,16 @@ one and no live dispatcher is added. Configuration is disabled by default.
 Read-only local commands expose slots, queues, claims, results and recovery holds.
 See the [operator and isolation guide](docs/SPRINT-6.7.md) and
 [validation evidence](docs/SPRINT-6.7-EVIDENCE.md).
+
+### Supervised integration boundary (Sprint 6.8)
+
+Live local execution is now blocked before claiming an approval or starting a
+process. The separate legacy/coordinator ledgers require a shared broker migration
+and independently verified worker/QA isolation. There is no configuration override.
+Historical records and offline synthetic rehearsals remain usable.
+`python3 -m src.integration_control --policy POLICY` provides read-only health
+and intentionally exits 1 until the migration is implemented.
+See [integration and recovery](docs/SPRINT-6.8.md),
+[validation evidence](docs/SPRINT-6.8-EVIDENCE.md), and the
+[supervised canary preparation runbook](docs/LIVE-CANARY-RUNBOOK.md).
+No real canary, scheduling, live concurrency, merge or deployment is activated.
