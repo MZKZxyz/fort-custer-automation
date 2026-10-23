@@ -1,5 +1,9 @@
 # Trusted Responses API controller
 
+Current response policy: [projection-based validation](RESPONSES-PROJECTION.md).
+Unfamiliar top-level metadata is discarded; known security fields and nested
+usage/output remain strictly validated.
+
 See [the current evidence-based compatibility review](RESPONSES-OBSERVED-COMPATIBILITY.md)
 for the 256-token connectivity profile and the reviewed zero-only `tool_usage` shape.
 
@@ -214,8 +218,8 @@ reasoning content and bounded opaque encrypted strings. The current validator
 also validates and discards documented reasoning text and summaries; see
 [response validation](API-RESPONSE-VALIDATION.md). It
 never decrypts, persists, forwards or reuses them. Documented message `phase` is
-accepted only with its defined enum values. Unknown fields, malformed usage and
-executable output still fail closed. This defect
+accepted only with its defined enum values. Unknown nested output/usage fields, malformed usage and
+executable output still fail closed. Unfamiliar top-level metadata is discarded. This defect
 is a plausible cause of the original failure, **not a retrospective diagnosis**;
 the original sanitized receipt did not retain the required evidence.
 
@@ -313,5 +317,9 @@ documented in [API-RESPONSE-VALIDATION.md](API-RESPONSE-VALIDATION.md). Its new
 fixed `validation_section` and `validation_rule` labels contain no provider
 fields, values, text or identifiers. Existing unresolved reservations remain held.
 
-The complete 2026-10-23 [top-level Responses envelope inventory](RESPONSES-ENVELOPE-SCHEMA.md) pins both OpenAPI and SDK revisions, documents discarded metadata and unsupported settings, and defines fixed-name unknown-field diagnostics. Raw provider names and values must never be logged.
+The historical [Responses envelope review](RESPONSES-ENVELOPE-SCHEMA.md) pins
+OpenAPI and SDK revisions. It is not a complete provider schema or a rejection
+allowlist. The [current projection policy](RESPONSES-PROJECTION.md) supersedes
+its former top-level unknown-field rejection. Historical diagnostics remain
+decodable; new unknown metadata never supplies diagnostic names or values.
 

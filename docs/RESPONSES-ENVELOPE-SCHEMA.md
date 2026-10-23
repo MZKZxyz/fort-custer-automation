@@ -1,5 +1,9 @@
 # Responses envelope review — 2026-10-23
 
+This is a historical inventory, not a complete schema. The current
+[projection policy](RESPONSES-PROJECTION.md) discards unfamiliar top-level
+metadata and retains strict reviewed security/accounting checks.
+
 Follow-up operator evidence identifies finite numeric `frequency_penalty` and
 `presence_penalty` echoes outside this historical OpenAPI inventory. They are
 now validated and discarded. The operator also supplied the exact nested `tool_usage` structure;
@@ -106,33 +110,25 @@ and are not equivalent to the deprecated retention maximum. Nonnull cache
 options remain unsupported, including on newer models. Adding a name to the
 inventory never grants permission to use its feature.
 
-## Fixed-vocabulary unknown-field diagnostics
+## Historical diagnostic compatibility
 
-`envelope/unknown_fields` now adds two fields:
+Earlier validators emitted `envelope/unknown_fields` diagnostics with fixed-name
+`unrecognized_fields` and an `other_unrecognized_fields` boolean. These remain
+decodable for existing audit and recovery records. Projection validation no
+longer generates such diagnostics from unfamiliar top-level metadata. It never
+logs unfamiliar names, values, hashes or identifiers.
 
-- `unrecognized_fields`: sorted unique list selected only from the fixed reviewed
-  names in `api_response_envelope.DIAGNOSTIC_FIELDS`.
-- `other_unrecognized_fields`: boolean indicating that at least one name was
-  outside that vocabulary. No such name, value, hash, identifier, or exception
-  string is serialized.
-
-The vocabulary includes the 38 reviewed names and five official CreateResponse
-names deliberately **not** accepted in responses: `context_management`,
-`include`, `input`, `stream`, `stream_options`. These can be named safely if
-injected, but are rejected even with null or empty values. This distinction also
-lets a future reviewed name be diagnosed without granting acceptance. A
-regression simulates the old allowlist to check that `output_text` is safely
-named. Arbitrary provider-controlled names never become diagnostic labels.
-The same whitelist, exact shape, sorted uniqueness, and strict boolean checks
-apply across helper IPC and budget audit records. Older five-field and seven-field
-diagnostics remain valid. These additions do not disclose which field occurred
-in a historical response whose diagnostic lacked names.
+The known request-only configuration names `context_management`, `include`,
+`input`, `stream` and `stream_options` remain forbidden in response metadata,
+even when null or empty. They now fail with the fixed
+`metadata/unsupported_configuration` diagnostic. This is an explicit security
+policy, not a blanket unknown-field check.
 
 ## Deliberately unsupported and unchanged limits
 
-Unknown envelope properties always reject, including unknown financial,
-retention, execution, or model settings. Unsupported documented configurations
-remain rejected as listed above. Executable tools and non-text modalities,
+Unfamiliar top-level properties are outside the receipt/security projection and
+are discarded, including instruction-looking or tool-like objects. Known
+security-sensitive configurations remain rejected as listed above. Executable tools and non-text modalities,
 unknown nested fields, annotations/logprobs, nonzero cache writes, new usage
 counters (even zero/null), absent/null/malformed usage, and unexpected pricing
 tiers remain rejected. Reasoning tokens remain a validated subset of output
@@ -148,9 +144,9 @@ safe diagnostic and public schema; never enable raw-body logging to investigate.
 ## Offline evidence
 
 `envelope-all-fields.json` is hand-authored synthetic data exercising every
-accepted name; it is not a provider capture. Regressions cover absent/null/text
-metadata, malicious instruction-looking text, invalid metadata types, all
-request-only diagnostic names, unknown-name injection, mixed known/unknown names,
+name in the historical inventory; it is not a provider capture. Regressions cover absent/null/text
+metadata, malicious instruction-looking text, invalid metadata types, known
+request-only configuration, discarded unknown-name injection, mixed known/unknown names,
 malformed diagnostic IPC, nested tool/modality and usage rejections, unpriced
 cache writes, and a disposable unresolved reservation with one dispatch and no
 retry. Existing cross-platform CI runs this suite normally and with `python -O`.

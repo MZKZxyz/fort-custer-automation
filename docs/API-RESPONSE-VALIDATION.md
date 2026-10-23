@@ -1,5 +1,9 @@
 # Second Responses validation investigation
 
+Current policy update: [projection-based validation](RESPONSES-PROJECTION.md)
+supersedes the former top-level allowlist; nested security/accounting checks
+remain strict. The investigation history below is retained for context.
+
 The operator reports HTTP 200 and `response_schema_invalid` for local request
 `afa8d02e954e4214aef599bd25365d02`. The POST reached OpenAI and a response
 was received. This is different from a pre-dispatch failure, but **does not
@@ -38,7 +42,7 @@ safely reconstruct them from model text or absent fields.
 
 | Section | Current accepted subset | Still refused / reason |
 | --- | --- | --- |
-| Envelope | JSON object, `object=response`, exact reviewed GPT-5 nano model, documented top-level fields | Oversize, duplicate/nonfinite JSON, unknown fields/model; no provider IDs are copied |
+| Envelope | JSON object, `object=response`, exact reviewed GPT-5 nano model, projection of reviewed fields; unfamiliar top-level metadata discarded | Oversize, duplicate/nonfinite JSON, wrong model; no provider IDs are copied |
 | Metadata | Documented nullable string/numeric/config echoes, dictionary of string metadata, plain-text instructions, plain-text format, typed reasoning config and cache diagnostics; all discarded | Invalid types, paid tiers, pro reasoning mode, nonempty conversation/prompt/access/tool state, new-model cache options or extended retention |
 | Nullable execution echoes | `service_tier=null` and `background=null` mean unspecified response echoes; the original request still explicitly fixes default tier and `background=false` | `priority`/`flex`/other tiers or `background=true`; no inference from a response can override the request |
 | Completion | Terminal `completed` or `incomplete`, `error=null`; optional/null incomplete details or reviewed reason enum | Failed/cancelled/queued/in-progress/null response status or provider error; HTTP 200 alone cannot authorize settlement |
@@ -134,3 +138,4 @@ is not claimed. A future separately authorized request, after proper resolution
 of the hold, will expose only the safe section/rule if another incompatibility
 remains. Nonzero cache writes, new pricing dimensions, new metadata capabilities,
 unsupported modalities and nonterminal/missing usage remain blocked for review.
+

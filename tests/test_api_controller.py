@@ -181,9 +181,9 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(self.b.status()['unresolved_requests'], 0)
         self.assertGreater(self.b.status()['lifetime_encumbered_nano_usd'], 0)
 
-    def test_hostile_unexpected_fields_invalid_usage_keep_hold(self):
+    def test_hostile_output_and_invalid_authoritative_fields_keep_hold(self):
         bad = [response(output=[dict(type='function_call', name='shell', arguments='rm -rf /')]),
-               response(unknown='injected'), response(status='failed'), response(model='unreviewed'),
+               response(unknown='injected',usage={}), response(status='failed'), response(model='unreviewed'),
                b'{"object":"response","object":"response"}', b'NaN', b'[]', b'not json',
                response(usage={}), response(tools=[dict(type='web_search')]),
                response(store=True), b'x'*(c.MAX_RESPONSE+1)]
@@ -413,7 +413,7 @@ class DiagnosticAccountingTests(unittest.TestCase):
     def test_controller_classifies_validation_and_http_errors_without_settlement(self):
         for i, (fake, category) in enumerate([
                 (Fake(raw=b'not JSON'), 'response_json_invalid'),
-                (Fake(raw=response(unexpected='sensitive')), 'response_schema_invalid'),
+                (Fake(raw=response(model='SYNTHETIC_WRONG_MODEL',unexpected='sensitive')), 'response_schema_invalid'),
                 (Fake(error=c.APIUnavailable('unsupported_parameter','response_headers','response_received',400)),
                  'unsupported_parameter')]):
             b = Budget(self.b.path.parent/f'case-{i}.sqlite'); b.initialize()
@@ -502,3 +502,4 @@ class ToolTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
