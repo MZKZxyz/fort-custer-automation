@@ -75,8 +75,8 @@ Calendar days use the existing `America/Los_Angeles` configuration.
 
 ## GitHub Actions configuration and permissions
 
-`.github/workflows/daily-planner.yml` runs daily at **16:17 UTC** (9:17 a.m. PDT /
-8:17 a.m. PST) and supports manual dispatch. It uses real GitHub Issues and stays
+`.github/workflows/daily-planner.yml` supports manual dispatch only. Sprint 6.6
+removes its legacy cron trigger; deploying source does not activate scheduling. It uses real GitHub Issues and stays
 in `dry_run` mode. Setup after reviewing/merging this PR:
 
 1. Add repository Actions secret **`BACKLOG_READ_TOKEN`**: a fine-grained PAT or
@@ -280,3 +280,16 @@ ledger retains evidence references and reproducible operator review queues.
 Planning is advisory, keeps the active worker ceiling at one, and grants no
 coding or publication approval. See the [operator guide](docs/SPRINT-6.5.md) and
 [offline test evidence and limitations](docs/SPRINT-6.5-EVIDENCE.md).
+
+### Controlled daily discovery and planning (Sprint 6.6)
+
+`python3 -m src.daily_planning` provides explicit `init`, manual `run`, `inspect`,
+`history`, `report`, and operator `recover` commands. It combines bounded anonymous
+issue discovery with fresh read-only evidence reconciliation and atomic JSON/text
+advisory reports. Durable daily claims suppress duplicates and preserve interrupted
+cycles; no approval, coding worker, application publication, merge or deploy runs.
+Scheduling is disabled in `config/daily-planning.example.json`; the launchd
+example is inert and disabled. The legacy Actions cron trigger is removed (manual
+dispatch remains). See the [operator setup, isolation limits and recovery guide](docs/SPRINT-6.6.md)
+and [offline evidence](docs/SPRINT-6.6-EVIDENCE.md). Same-UID filesystem permissions
+are not credential isolation; safe manual mode remains available.

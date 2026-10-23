@@ -6,8 +6,6 @@ on:
         description: 'First run only: create a NEW planning ledger (never reset existing state)'
         type: boolean
         default: false
-  schedule:
-    - cron: '17 16 * * *'
 permissions:
   contents: read
 concurrency:

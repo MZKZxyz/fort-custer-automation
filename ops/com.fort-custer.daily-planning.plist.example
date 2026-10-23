@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.fort-custer.daily-planning</string>
+  <key>Disabled</key><true/>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/REVIEWED/ABSOLUTE/python3</string>
+    <string>-m</string><string>src.daily_planning</string><string>run</string>
+    <string>--config</string><string>/operator/observation/daily.json</string>
+    <string>--scheduled</string>
+  </array>
+  <key>WorkingDirectory</key><string>/REVIEWED/fort-custer-automation</string>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+  <key>RunAtLoad</key><false/>
+  <key>KeepAlive</key><false/>
+  <key>ProcessType</key><string>Background</string>
+  <key>Umask</key><integer>63</integer>
+</dict>
+</plist>
