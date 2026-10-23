@@ -293,8 +293,11 @@ class ProcessEndpoint:
         try:
             sock.bind(self.path); os.chmod(self.path, 0o600); sock.listen(1)
             script = Path(__file__).parent/'fixtures/broker/mock_worker.py'
+            env = {'PATH':'/usr/bin:/bin', 'HOME':str(root), 'LANG':'C.UTF-8'}
+            if sys.platform == 'darwin':
+                env['__CF_USER_TEXT_ENCODING'] = f'0x{os.getuid():X}:0x0:0x0'
             self.process = subprocess.Popen([sys.executable, '-I', str(script), str(sock.fileno())],
-                cwd=root, env={'PATH':'/usr/bin:/bin', 'HOME':str(root), 'LANG':'C.UTF-8'},
+                cwd=root, env=env,
                 close_fds=True, pass_fds=(sock.fileno(),), start_new_session=True,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         finally: sock.close()
@@ -359,6 +362,35 @@ class TransportTests(unittest.TestCase):
         p.unlink(); p.symlink_to('/missing')
         with self.assertRaises((ValueError, FileNotFoundError)): t.exchange(p,b'x',os.getuid(),1)
         with self.assertRaises(ValueError): t.exchange(p,b'x'* (t.MAXIMUM+1),os.getuid(),1)
+
+
+class MockEnvironmentTests(unittest.TestCase):
+    def setUp(self):
+        import runpy
+        script = Path(__file__).parent/'fixtures/broker/mock_worker.py'
+        self.validate = runpy.run_path(str(script))['validate_environment']
+
+    def test_macos_runtime_metadata_is_exact_and_uid_bound(self):
+        env = {'PATH':'/usr/bin:/bin', 'HOME':'/nonexistent', 'LANG':'C.UTF-8',
+               '__CF_USER_TEXT_ENCODING':'0x1F5:0x0:0x0'}
+        self.validate(env, 'darwin', 501)
+        for value in (None, '0x1F6:0x0:0x0', 'arbitrary-payload'):
+            bad = dict(env)
+            if value is None: bad.pop('__CF_USER_TEXT_ENCODING')
+            else: bad['__CF_USER_TEXT_ENCODING'] = value
+            with self.assertRaisesRegex(RuntimeError, 'metadata'):
+                self.validate(bad, 'darwin', 501)
+        with self.assertRaises(RuntimeError): self.validate(env, 'linux', 501)
+
+    def test_credentials_and_unknown_variables_still_rejected_without_values(self):
+        for platform in ('linux', 'darwin'):
+            for key in ('GITHUB_TOKEN', 'SSH_AUTH_SOCK', 'UNEXPECTED'):
+                env = {'PATH':'/usr/bin:/bin', key:'never-log-this-value'}
+                if platform == 'darwin': env['__CF_USER_TEXT_ENCODING'] = '0x1F5:0x0:0x0'
+                with self.assertRaises(RuntimeError) as error:
+                    self.validate(env, platform, 501)
+                self.assertIn(key, str(error.exception))
+                self.assertNotIn('never-log-this-value', str(error.exception))
 
 
 class SyntheticEndToEndTests(unittest.TestCase):
