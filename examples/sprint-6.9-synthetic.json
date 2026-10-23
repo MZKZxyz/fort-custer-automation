@@ -1,0 +1,19 @@
+{
+  "authenticated_kernel_peer": true,
+  "candidate": "240394e2c0580ed722c324b53856022a46843dd31dd289db923c0079ac643f8b",
+  "external_isolation_proven": false,
+  "generation": 1,
+  "historical_ledger_unchanged": true,
+  "independent_qa": true,
+  "inherited_environment_and_fds_checked": true,
+  "live_dispatch": false,
+  "publication_performed": false,
+  "publication_review": "required-separate-human-action-no-legacy-import",
+  "qa_digest": "eb93a37cc5ac4a671f87acb1d794b49badb1b2fe50bf2b4219f391e43950c39e",
+  "real_codex_workers": 0,
+  "schema": "grant-broker-v1-synthetic",
+  "source": "41fb6a9047e435084146419748f3cfdfc2fccf69",
+  "state": "validated",
+  "subprocess_mock": true,
+  "task": "task-0"
+}

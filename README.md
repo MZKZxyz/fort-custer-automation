@@ -321,3 +321,30 @@ See [integration and recovery](docs/SPRINT-6.8.md),
 [validation evidence](docs/SPRINT-6.8-EVIDENCE.md), and the
 [supervised canary preparation runbook](docs/LIVE-CANARY-RUNBOOK.md).
 No real canary, scheduling, live concurrency, merge or deployment is activated.
+
+
+## Sprint 6.9: grant broker and local peer transport (synthetic only)
+
+The [versioned broker](docs/SPRINT-6.9.md) owns one atomic synthetic claim ledger,
+with process races, fencing, durable startup/QA intents and explicit termination
+recovery. The one-shot Unix transport authenticates kernel peer credentials,
+bounds wire bytes/deadlines and rejects descriptor transfers. Trusted QA
+reconstructs exact-source candidates; publication still requires separate human
+review. Historical ledgers are preserved and are not atomically migrated.
+
+**Live dispatch remains unconditionally disabled by Sprint 6.8.** No flag can
+activate the broker. The subprocess demo uses the same UID and proves no external
+sandbox. Read [worker isolation](docs/WORKER-ISOLATION.md),
+[validation evidence](docs/SPRINT-6.9-EVIDENCE.md), the
+[canary runbook](docs/LIVE-CANARY-RUNBOOK.md) and the disabled
+[example](config/grant-broker.example.json) before considering a separate activation.
+
+```sh
+python3 -m unittest discover -s tests -p test_grant_broker.py -v
+PYTHONPATH=.:tests python3 tests/test_grant_broker.py --demo
+python3 -m src.integration_control --policy POLICY --broker-config BROKER_CONFIG
+```
+
+The readiness command always exits 1 and reports unverified external isolation,
+blocked legacy migration, zero live capacity and unsupported hard resource limits.
+No real Codex worker, application publication, merge or deployment is performed.
