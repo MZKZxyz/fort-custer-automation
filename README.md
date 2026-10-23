@@ -232,7 +232,20 @@ The manual local runner supports `task-list` and `task-prepare TASK_ID` from an
 operator-owned, versioned catalog embedded in the local policy. Exact repository,
 source manifest, reviewed issue snapshot, editable paths, coding instructions,
 independent Node checks and zero-API-spend subscription limits are bound to the
-existing controlling-terminal approval. New tasks have no publication path;
-the Sprint 5.9 publisher remains restricted to its original Issue #3 candidate.
+existing controlling-terminal coding approval. Catalog draft publication requires
+the separate Sprint 6.2 workflow below; the Sprint 5.9 publisher remains
+restricted to its original Issue #3 candidate.
 Production execution remains disabled. See [schema, workflow and trust limits](docs/SPRINT-6.1.md)
 and [offline evidence](docs/SPRINT-6.1-EVIDENCE.md).
+
+### Human-authorized catalog draft publication (Sprint 6.2)
+
+Validated catalog tasks can now use `python3 -m src.catalog_publication` to
+reconstruct durable artifacts, prepare an immutable request, perform read-only
+GitHub preflight, and request a separate controlling-terminal publication
+approval. A restricted publisher can create a new branch and draft PR; collisions,
+expiry and ambiguous PR responses fail closed. The legacy Sprint 5.9 publisher
+and historical Issue #3 evidence remain separate. See the
+[operator workflow and security limits](docs/SPRINT-6.2.md) and
+[offline test evidence](docs/SPRINT-6.2-EVIDENCE.md). No production execution,
+automatic approval, merge or deployment is enabled.
