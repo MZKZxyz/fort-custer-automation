@@ -119,3 +119,15 @@ Linux/macOS matrix includes broker/transport tests, new preparation tests and
 optimized safety checks. Remote results will be recorded after the requested
 draft PR is created. Local Linux success is not a macOS result or operator
 activation evidence.
+
+Initial PR head `c2e4d06`: Ubuntu broker/preparation/optimized/demo job passed.
+macOS 26.6.2 / Python 3.12.10 / Node 22.23.3 found an existing transport
+disconnect race: an early-closing malformed peer made shutdown(SHUT_WR) raise
+ENOTCONN before truncated-frame validation. It still rejected the exchange;
+the test expected the protocol ValueError. The follow-up normalizes shutdown
+failure into a fail-closed protocol rejection, without accepting a response or
+retrying, and adds a deterministic regression. Initial workflow:
+https://github.com/MZKZxyz/fort-custer-automation/actions/runs/39913970168
+Planner and execution-simulation workflows passed at that head. Remaining
+workflows were still running at this observation; final results are recorded
+in the draft PR description when available.

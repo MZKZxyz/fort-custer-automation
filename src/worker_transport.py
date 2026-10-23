@@ -76,6 +76,16 @@ def send(sock, raw, deadline):
         frame = frame[count:]
 
 
+def finish_request(sock):
+    # Darwin can report ENOTCONN here when a malformed/early-closing peer
+    # disconnects immediately after send. Do not continue to accept any reply
+    # or retry; expose the same protocol rejection as a truncated frame.
+    try:
+        sock.shutdown(socket.SHUT_WR)
+    except OSError:
+        raise ValueError('Disconnected transport before response') from None
+
+
 def exchange(path, request, expected_uid, seconds):
     """Authenticate kernel peer before sending bytes; never reconnect or retry.
 
@@ -104,7 +114,7 @@ def exchange(path, request, expected_uid, seconds):
         sock.connect(str(path))
         e.require(peer_uid(sock) == expected_uid, 'Wrong worker peer identity')
         send(sock, request, end)
-        sock.shutdown(socket.SHUT_WR)
+        finish_request(sock)
         response = receive(sock, end)
         # A one-shot response must close. Reject trailing frames/replays and
         # bound a peer which sends its frame but never completes the stream.
