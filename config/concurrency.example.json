@@ -1,0 +1,13 @@
+{
+  "schema": "concurrency-coordinator-v1",
+  "enabled": false,
+  "slots": 3,
+  "live_limit": 1,
+  "mode": "synthetic-only",
+  "ledger": "/operator/concurrency/coordination.sqlite",
+  "scratch": "/operator/synthetic-scratch",
+  "stop_files": ["/operator/controller/catalog-state/STOP"],
+  "max_tasks": 1000,
+  "max_artifact_bytes": 1048576,
+  "max_storage_bytes": 67108864
+}

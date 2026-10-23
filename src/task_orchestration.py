@@ -395,3 +395,13 @@ def main(argv=None):
             for key,value in out.items():print(key+': '+json.dumps(value,sort_keys=True,ensure_ascii=True))
     except (OSError,ValueError,KeyError,TypeError,sqlite3.Error):
         p.exit(1,'Orchestration failed closed; inspect configuration and protected source evidence.\n')
+
+
+def coordinator_observations(config):
+    """Optional v1 read-only coordinator evidence; never a dispatch/approval adapter.
+
+    Existing orchestration configuration, snapshots and historical hashes stay v1.
+    Operators must explicitly provide the separate reviewed coordinator config.
+    """
+    from src.concurrency_coordinator import observations
+    return observations(config)
