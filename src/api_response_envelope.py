@@ -1,4 +1,4 @@
-"""Reviewed envelope names, not permission to accept arbitrary provider fields.
+"""Reviewed receipt/security projection, not a complete provider envelope schema.
 
 OpenAPI 2.3.0, commit 0938b0f003300cd4c6ec39191532df81b04dfae1;
 openai-python d622f28ad5cb3f947541936c0c139891211a42c5. See
@@ -19,9 +19,10 @@ OPENAPI_FIELDS = SDK_FIELDS | DISCARDED_TEXT_FIELDS
 # Response properties / generated SDK serialized fields. Keep its strict false check.
 # Operator-observed penalty echoes are validated as finite numbers and discarded.
 # Operator-observed tool_usage is accepted only with reviewed zero counters.
-ACCEPTED_FIELDS = OPENAPI_FIELDS | {'store','frequency_penalty','presence_penalty','tool_usage'}
-# Official CreateResponse names outside the response envelope. Diagnostic names
-# only: these remain rejected even when null / empty / apparently harmless.
+REVIEWED_FIELDS = OPENAPI_FIELDS | {'store','frequency_penalty','presence_penalty','tool_usage'}
+# Known request-only configuration remains forbidden in a response even when
+# null or empty. Other unfamiliar top-level metadata is outside the projection.
 REQUEST_ONLY_FIELDS = frozenset({'context_management','include','input','stream','stream_options'})
-DIAGNOSTIC_FIELDS = ACCEPTED_FIELDS | REQUEST_ONLY_FIELDS
+# Retained only to decode historical diagnostics, never to label new metadata.
+DIAGNOSTIC_FIELDS = REVIEWED_FIELDS | REQUEST_ONLY_FIELDS
 

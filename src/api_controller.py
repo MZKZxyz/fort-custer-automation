@@ -255,6 +255,8 @@ def _tool_usage(value):
 
 def _metadata(r, request):
     # These are discarded response echoes, never configuration or authority.
+    _schema(not any(name in r for name in envelope.REQUEST_ONLY_FIELDS),
+            'metadata','unsupported_configuration')
     if 'tool_usage' in r:
         _tool_usage(r['tool_usage'])
     for name in envelope.DISCARDED_TEXT_FIELDS:
@@ -424,12 +426,10 @@ def _receipt(raw, request, p):
     _schema(type(raw) is bytes and len(raw) <= MAX_RESPONSE, 'envelope','size')
     r = e.decode(raw)
     _schema(isinstance(r, dict), 'envelope','shape')
-    unknown = set(r) - envelope.ACCEPTED_FIELDS
-    if unknown:
-        raise APIUnavailable('response_schema_invalid', 'response_validation', 'response_received', 200,
-            validation_section='envelope', validation_rule='unknown_fields',
-            unrecognized_fields=sorted(unknown & envelope.DIAGNOSTIC_FIELDS),
-            other_unrecognized_fields=bool(unknown - envelope.DIAGNOSTIC_FIELDS))
+    # Select only reviewed receipt/security fields. Unknown top-level names and
+    # values are never interpreted, traversed, forwarded, priced or diagnosed.
+    # Nested authoritative structures retain their exact validation below.
+    r = {name: r[name] for name in envelope.REVIEWED_FIELDS | envelope.REQUEST_ONLY_FIELDS if name in r}
     _schema(r.get('object') == 'response', 'envelope','object')
     _schema(r.get('model') == MODEL, 'envelope','model')
     _metadata(r, request)
