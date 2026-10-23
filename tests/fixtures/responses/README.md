@@ -31,3 +31,5 @@ Official generated types inspected October 23, 2026:
 These fixtures establish compatibility with the reviewed subset. They do not
 prove that a live provider emits exactly these structures or diagnose a past
 request whose raw response was deliberately not retained.
+
+`envelope-all-fields.json` is a synthetic 38-name envelope: 37 current OpenAPI Response properties plus the strictly-false legacy `store` echo. See [the pinned complete inventory](../../../docs/RESPONSES-ENVELOPE-SCHEMA.md). Its instruction-looking `output_text` is discarded and cannot replace nested output/usage validation.

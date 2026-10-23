@@ -308,3 +308,5 @@ The second HTTP-200 validation investigation and exact compatibility policy are
 documented in [API-RESPONSE-VALIDATION.md](API-RESPONSE-VALIDATION.md). Its new
 fixed `validation_section` and `validation_rule` labels contain no provider
 fields, values, text or identifiers. Existing unresolved reservations remain held.
+
+The complete 2026-10-23 [top-level Responses envelope inventory](RESPONSES-ENVELOPE-SCHEMA.md) pins both OpenAPI and SDK revisions, documents discarded metadata and unsupported settings, and defines fixed-name unknown-field diagnostics. Raw provider names and values must never be logged.
