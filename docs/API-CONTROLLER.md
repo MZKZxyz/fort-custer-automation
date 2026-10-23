@@ -4,6 +4,10 @@ Current response policy: [projection-based validation](RESPONSES-PROJECTION.md).
 Unfamiliar top-level metadata is discarded; known security fields and nested
 usage/output remain strictly validated.
 
+Sprint 6.13A adds a [broker-bound observation-only planning adapter and operator
+runbook](OBSERVATION-PLANNING.md). It is synthetic only, returns strictly typed
+classifications with trusted provenance, and adds no execution or approval authority.
+
 See [the current evidence-based compatibility review](RESPONSES-OBSERVED-COMPATIBILITY.md)
 for the 256-token connectivity profile and the reviewed zero-only `tool_usage` shape.
 

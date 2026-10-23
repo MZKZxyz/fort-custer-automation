@@ -461,14 +461,20 @@ class Controller:
         self.budget, self.transport = budget, transport
         self.prices = pricing(DEFAULT_PRICING if prices is None else prices)
 
-    def _request(self, ident, request, binding, guard):
+    def _request(self, ident, request, binding, guard, *, _observation=False):
+        e.require(type(_observation) is bool and (not _observation or
+                  getattr(self.transport, 'synthetic', False) is True and
+                  binding.get('receiver') == 'synthetic-observation-only'),
+                  'Observation parsing requires synthetic planning')
         guard()
         old = self.budget.reserve(ident, e.digest(dict(binding=binding, request=request, pricing=self.prices)),
                                   maximum_charge(self.prices, request['max_output_tokens']),
                                   provenance=dict(binding=binding, pricing=self.prices,
                                       model_config={k:v for k,v in request.items() if k != 'input'},
                                       prompt_digest=e.digest(request['input'])))
-        if old is not None: return old
+        if old is not None:
+            e.require(not _observation, 'Observation already attempted; no replay or redispatch')
+            return old
         guard()  # Failure after reservation intentionally leaves durable hold.
         try:
             raw = self.transport.send(e.canonical(request).encode())
@@ -485,6 +491,12 @@ class Controller:
         # Reconcile billing even if STOP arrives while inference is in flight.
         self.budget.settle(ident, result['estimated_cost_nano_usd'], result)
         guard()  # Never deliver model output on revoked/expired/source-changed grant.
+        if _observation:
+            # A fixed internal boundary, never a raw-response callback/passthrough.
+            from src.observation_planning import _classification
+            classification = _classification(raw)
+            guard()
+            return classification
         return result
 
     def connectivity(self, *, operator_enabled=False):
@@ -493,7 +505,7 @@ class Controller:
         return self._request(uuid.uuid4().hex, connectivity_payload(),
                              dict(purpose='operator-text-only-connectivity'), lambda:None)
 
-    def synthetic_request(self, broker, claim, principal, ident, prompt):
+    def _synthetic_authority(self, broker, claim, principal):
         e.require(getattr(self.transport, 'synthetic', False) is True,
                   'Live task API integration unavailable; synthetic transport required')
         # Trust actual broker state, immutable source/policy, STOP, deadline/fence.
@@ -505,7 +517,10 @@ class Controller:
                 broker._guard(claim); broker._fresh(row['authorization'])
                 e.require(claim['worker'] == principal, 'Execution principal mismatch')
                 return row['authorization']
-        a = guard()
+        return guard(), guard
+
+    def synthetic_request(self, broker, claim, principal, ident, prompt):
+        a, guard = self._synthetic_authority(broker, claim, principal)
         binding = dict(execution=claim['execution'], claim=e.digest(claim), principal=principal,
             task=a['task'], authorization=e.digest(a), source_manifest=a['source_manifest'],
             prompt=e.digest(prompt), tools=[], receiver='synthetic-only-no-execution')
