@@ -1,5 +1,8 @@
 # Trusted Responses API controller
 
+See [the current evidence-based compatibility review](RESPONSES-OBSERVED-COMPATIBILITY.md)
+for the 256-token connectivity profile and the reviewed zero-only `tool_usage` shape.
+
 Sprint 6.12 prepares a text-only operator connectivity command and offline
 broker integration. **Live coding capacity remains zero.** No API key is needed
 for tests. The existing subscription and legacy live gates remain closed.
@@ -20,10 +23,11 @@ Official references checked October 23, 2026:
 - [Deprecations](https://developers.openai.com/api/docs/deprecations)
 
 GPT-4.1 nano's announced shutdown is October 23, 2026; it is not allowlisted.
-The controller accepts at most 2,048 UTF-8 input bytes and 64 generated tokens,
-including reasoning. Connectivity requests use the fixed prompt `Reply with OK.`,
-16 output tokens and minimal reasoning. An incomplete response is a valid billed
-outcome, not permission to retry. Documented reasoning is validated and discarded; no raw
+The synthetic worker profile accepts at most 2,048 UTF-8 input bytes and 64 generated
+tokens, including reasoning. The separately reviewed operator connectivity profile
+uses only the fixed prompt `Reply with OK.`, 256 output tokens and minimal reasoning.
+An incomplete response is accounted for using actual reported usage, including zero
+usage; it grants no permission to retry and does not independently prove billing. Documented reasoning is validated and discarded; no raw
 reasoning, assistant text, refusals, IDs, metadata or headers enter receipts.
 
 A trusted spawned controller helper reads only the configured external private
@@ -58,8 +62,8 @@ not provider billing evidence. Stale/incorrect prices invalidate the cost bound.
 Before dispatch, reserve **400,000 input tokens at the uncached rate plus the
 maximum output at the output rate**, even though the actual prompt is tiny.
 This uses the full documented context as a conservative upper bound and avoids
-estimating tokenization or protocol overhead. Connectivity reserves $0.0200064;
-a 64-token request reserves $0.0200256. Actual cost uses `(input-cached)*input_rate
+estimating tokenization or protocol overhead. Connectivity reserves **20,102,400 nano-USD ($0.0201024)** for 256 output tokens;
+a synthetic 64-token request reserves $0.0200256. Actual cost uses `(input-cached)*input_rate
 + cached*cached_rate + output*output_rate`. Reasoning tokens are a subset of
 output and are not charged twice. Unsupported modalities, tools, models and
 pricing dimensions are rejected, never guessed. This overreservation deliberately
@@ -218,8 +222,8 @@ the original sanitized receipt did not retain the required evidence.
 Request review confirms the documented Responses endpoint, pinned GPT-5 nano
 snapshot, `reasoning.effort=minimal`, `max_output_tokens=16`, text input, disabled
 tools/storage/background/streaming, default tier and `in_memory` retention.
-The generic payload builder now enforces the documented minimum of 16 output
-tokens, with the existing maximum of 64. The fixed connectivity request and its
+At the time of that investigation the generic payload builder enforced 16–64 output
+tokens. The connectivity request then used 16 tokens. That historical request and its
 maximum reservation are unchanged. There is no automatic parameter removal,
 model substitution or fallback retry if an account rejects a parameter.
 
@@ -310,3 +314,4 @@ fixed `validation_section` and `validation_rule` labels contain no provider
 fields, values, text or identifiers. Existing unresolved reservations remain held.
 
 The complete 2026-10-23 [top-level Responses envelope inventory](RESPONSES-ENVELOPE-SCHEMA.md) pins both OpenAPI and SDK revisions, documents discarded metadata and unsupported settings, and defines fixed-name unknown-field diagnostics. Raw provider names and values must never be logged.
+

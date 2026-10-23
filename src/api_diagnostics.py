@@ -18,6 +18,7 @@ PARAMETERS = frozenset({'model','input','max_output_tokens','store','background'
 
 
 VALIDATION_RULES = {
+    'tool_usage': {'shape','unknown_dimension','counter_type','counter_bounds','activity_disabled'},
     'envelope': {'size','shape','unknown_fields','object','model','json'},
     'metadata': {'field_type','unsupported_configuration','service_tier','cache_policy'},
     'completion': {'response_status','provider_error','incomplete_details'},
@@ -85,3 +86,4 @@ class APIUnavailable(ValueError):
         self.request_id = None
         self.audit_recorded = False
         super().__init__(self.diagnostic['category'])
+

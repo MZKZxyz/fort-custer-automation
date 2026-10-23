@@ -33,3 +33,11 @@ prove that a live provider emits exactly these structures or diagnose a past
 request whose raw response was deliberately not retained.
 
 `envelope-all-fields.json` is a synthetic 38-name envelope: 37 current OpenAPI Response properties plus the strictly-false legacy `store` echo. See [the pinned complete inventory](../../../docs/RESPONSES-ENVELOPE-SCHEMA.md). Its instruction-looking `output_text` is discarded and cannot replace nested output/usage validation.
+
+## Operator-observed structure
+
+`observed-incomplete.json` uses operator-reported names, types, incomplete
+status, zero usage, and the exact zero-valued `tool_usage` object. IDs and
+ciphertext are synthetic; timestamps are absent. The production validator
+accepts it without persisting output or metadata. This is synthetic regression
+evidence, not independent provider billing evidence.

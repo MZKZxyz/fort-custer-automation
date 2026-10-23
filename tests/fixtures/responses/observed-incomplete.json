@@ -1,0 +1,49 @@
+{
+  "id": "synthetic_response",
+  "object": "response",
+  "model": "gpt-5-nano-2025-08-07",
+  "status": "incomplete",
+  "incomplete_details": {
+    "reason": "max_output_tokens"
+  },
+  "max_output_tokens": 16,
+  "frequency_penalty": 0.0,
+  "presence_penalty": 0.0,
+  "output": [
+    {
+      "type": "reasoning",
+      "summary": [],
+      "encrypted_content": "SYNTHETIC_CIPHERTEXT"
+    }
+  ],
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0,
+    "input_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0
+    },
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  },
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  }
+}

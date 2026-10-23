@@ -21,6 +21,7 @@ MODEL = 'gpt-5-nano-2025-08-07'
 CONTEXT = 400_000  # Reserve full model context: no approximate tokenizer assumptions.
 MAX_INPUT_BYTES = 2048
 MAX_OUTPUT = 64
+CONNECTIVITY_OUTPUT = 256
 MAX_RESPONSE = 256*1024
 DEADLINE = 20
 DEFAULT_PRICING = dict(version='openai-standard-usd-2025-08-07-review-2026-10-23', model=MODEL,
@@ -50,12 +51,21 @@ def maximum_charge(p, output):
     return CONTEXT*p['input_nano_usd_per_token']+output*p['output_nano_usd_per_token']
 
 
+def connectivity_payload():
+    request = payload('Reply with OK.')
+    request['max_output_tokens'] = CONNECTIVITY_OUTPUT
+    return request
+
+
 def validate_request(body):
     """Pinned text-only contract, checked offline before any connection is opened."""
     try:
         e.require(type(body) is bytes and len(body) <= 16384, 'Request ceiling')
         r = e.decode(body)
-        e.require(isinstance(r, dict) and e.canonical(r) == e.canonical(payload(r.get('input'), r.get('max_output_tokens'))),
+        expected = (connectivity_payload() if isinstance(r, dict) and
+                    r.get('max_output_tokens') == CONNECTIVITY_OUTPUT else
+                    payload(r.get('input'), r.get('max_output_tokens')))
+        e.require(isinstance(r, dict) and e.canonical(r) == e.canonical(expected),
                   'Unsupported request configuration')
     except Exception:
         raise APIUnavailable('local_request_invalid', 'local_request', 'not_attempted') from None
@@ -216,8 +226,37 @@ def _fields(value, allowed, section, required=()):
     _schema(set(required) <= set(value), section, 'shape')
 
 
+def _tool_usage(value):
+    # Exact operator-observed response shape. No tool pricing model or execution
+    # authority is inferred from these counters; validated metadata is discarded.
+    schema = {
+        'image_gen': {
+            'input_tokens': None,
+            'input_tokens_details': {'image_tokens': None, 'text_tokens': None},
+            'output_tokens': None,
+            'output_tokens_details': {'image_tokens': None, 'text_tokens': None},
+            'total_tokens': None,
+        },
+        'web_search': {'num_requests': None},
+    }
+    def check(node, expected):
+        if expected is None:
+            _schema(type(node) is int, 'tool_usage','counter_type')
+            _schema(node >= 0, 'tool_usage','counter_bounds')
+            _schema(node == 0, 'tool_usage','activity_disabled')
+            return
+        _schema(isinstance(node, dict), 'tool_usage','shape')
+        _schema(set(node) <= set(expected), 'tool_usage','unknown_dimension')
+        _schema(set(node) == set(expected), 'tool_usage','shape')
+        for key, child in expected.items():
+            check(node[key], child)
+    check(value, schema)
+
+
 def _metadata(r, request):
     # These are discarded response echoes, never configuration or authority.
+    if 'tool_usage' in r:
+        _tool_usage(r['tool_usage'])
     for name in envelope.DISCARDED_TEXT_FIELDS:
         _schema(r.get(name) is None or isinstance(r[name], str), 'metadata','field_type')
     for name in ('id','user','safety_identifier','prompt_cache_key'):
@@ -226,6 +265,9 @@ def _metadata(r, request):
     for name in ('created_at','completed_at','temperature','top_p'):
         if name == 'created_at' and name in r or r.get(name) is not None:
             _schema(e.finite(r[name]) and r[name] >= 0, 'metadata','field_type')
+    for name in ('frequency_penalty','presence_penalty'):
+        if name in r:
+            _schema(e.finite(r[name]), 'metadata','field_type')
     for name in ('max_output_tokens','max_tool_calls','top_logprobs'):
         if r.get(name) is not None:
             _schema(type(r[name]) is int and r[name] >= 0, 'metadata','field_type')
@@ -448,7 +490,7 @@ class Controller:
     def connectivity(self, *, operator_enabled=False):
         e.require(operator_enabled is True and type(self.transport) is ResponsesTransport,
                   'Explicit operator-only connectivity activation required')
-        return self._request(uuid.uuid4().hex, payload('Reply with OK.', 16),
+        return self._request(uuid.uuid4().hex, connectivity_payload(),
                              dict(purpose='operator-text-only-connectivity'), lambda:None)
 
     def synthetic_request(self, broker, claim, principal, ident, prompt):
@@ -528,3 +570,4 @@ def main():
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
