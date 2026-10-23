@@ -98,6 +98,69 @@ def _context(workspace, protected, allowed):
                 workspaceRoots=[workspace.as_uri()], windowsSandboxLevel='disabled')
 
 
+def _local_counterexample(root, allowed, auth, marker):
+    """Independent same-UID process evidence; never invokes a sandbox helper."""
+    env = dict(PATH='/usr/bin:/bin', HOME=str(root), CODEX_HOME=str(root/'codex-home'), LANG='C')
+    def cat(path):
+        return subprocess.run(['/bin/cat', str(path)], cwd=root, env=env,
+                              capture_output=True, timeout=5, check=False)
+    control = cat(allowed)
+    positive = control.returncode == 0 and control.stdout == b'baseline' and not control.stderr
+    result = cat(auth) if positive else None
+    readable = (result.returncode == 0 and result.stdout == marker and not result.stderr
+                if result is not None else None)
+    return dict(positive_read=positive, auth_readable=readable)
+
+
+def _process_cat(server, ident, path, workspace):
+    """Collect bounded output through terminal status, not just the first chunk.
+
+    process/start success does not prove the executable started. Runtime/helper
+    failures can arrive later through process/read. Missing terminal evidence is
+    unavailable, never a credential denial.
+    """
+    started = server.rpc('process/start', dict(processId=ident,
+        argv=['/bin/cat', str(path)], cwd=workspace.as_uri(), env={'PATH': '/usr/bin:/bin'},
+        tty=False, pipeStdin=False, arg0=None, sandbox=None))
+    if 'error' in started:
+        return dict(complete=False, stdout=b'', denied=False)
+    after = None
+    data = b''
+    # Each RPC already has a 10-second wall bound; no indefinite polling/replay.
+    for _ in range(5):
+        output = server.rpc('process/read', dict(processId=ident, afterSeq=after,
+                                                maxBytes=4096, waitMs=1000))
+        if 'error' in output:
+            return dict(complete=False, stdout=b'', denied=False)
+        result = output['result']
+        for chunk in result['chunks']:
+            after = chunk['seq']
+            raw = base64.b64decode(chunk['chunk'], validate=True)
+            if chunk['stream'] == 'stdout': data += raw
+            if len(data) > 4096: raise ValueError('Process probe output ceiling')
+        if result.get('exited') is True:
+            return dict(complete=result.get('exitCode') == 0 and result.get('failure') is None
+                        and result.get('sandboxDenied') is False,
+                        stdout=data, denied=result.get('sandboxDenied') is True
+                        and result.get('failure') is None)
+    return dict(complete=False, stdout=b'', denied=False)
+
+
+def _process_counterexample(server, workspace, allowed, auth, marker):
+    control = _process_cat(server, 'synthetic-control', allowed, workspace)
+    positive = control['complete'] and control['stdout'] == b'baseline'
+    if not positive:
+        return dict(positive_read=False, state='unavailable', auth_readable=None)
+    result = _process_cat(server, 'synthetic-cat', auth, workspace)
+    if result['complete']:
+        readable = result['stdout'] == marker
+        return dict(positive_read=True, state='observed-readable' if readable else 'unexpected-output',
+                    auth_readable=readable)
+    if result['denied']:
+        return dict(positive_read=True, state='observed-denial', auth_readable=False)
+    return dict(positive_read=True, state='unavailable', auth_readable=None)
+
+
 def probe(binary):
     """Create and destroy our own nonsecret fixtures. Return booleans, no data."""
     with tempfile.TemporaryDirectory(prefix='fc-611-') as tmp:
@@ -115,18 +178,11 @@ def probe(binary):
         context = _context(workspace, protected, allowed)
         context['permissions']['file_system']['entries'].append(
             dict(path=dict(type='path', path=home.as_uri()), access='deny'))
+        local = _local_counterexample(root, allowed, auth, marker)
         with _Executor(binary, root) as server:
             def read(path, sandbox):
                 return server.rpc('fs/readFile', dict(path=path.as_uri(), sandbox=sandbox))
-            started = server.rpc('process/start', dict(processId='synthetic-cat',
-                argv=['/bin/cat', str(auth)], cwd=workspace.as_uri(),
-                env={'PATH': '/usr/bin:/bin'}, tty=False, pipeStdin=False, arg0=None, sandbox=None))
-            if 'error' in started: raise ValueError('Synthetic process startup failed')
-            output = server.rpc('process/read', dict(processId='synthetic-cat', afterSeq=None,
-                                                    maxBytes=1024, waitMs=1000))
-            chunks = output['result']['chunks']
-            process_readable = b''.join(base64.b64decode(c['chunk'], validate=True)
-                                        for c in chunks if c['stream'] == 'stdout') == marker
+            process = _process_counterexample(server, workspace, allowed, auth, marker)
             direct = read(auth, None)
             readable = base64.b64decode(direct['result']['dataBase64'], validate=True) == marker
             denials = [bool(read(path, context).get('error')) for path in [auth, *sentinels]]
@@ -149,20 +205,27 @@ def probe(binary):
             # boundary. A receiver MUST never trust caller-selected policies.
             omitted = read(protected/'policy', None)
             bypass = base64.b64decode(omitted['result']['dataBase64'], validate=True) == marker
+        controls = positive and writable
+        verified = controls and all(denials) and denied_write
         return dict(schema='codex-boundary-probe-v1', cli_version=CLI_VERSION,
             synthetic_only=True, inference=False, live_ready=False,
-            same_uid_auth_readable=readable, same_uid_process_auth_readable=process_readable,
+            same_uid_auth_readable=readable,
+            same_uid_subprocess_positive_read=local['positive_read'],
+            same_uid_subprocess_auth_readable=local['auth_readable'],
+            executor_process_positive_read=process['positive_read'],
+            executor_process_state=process['state'],
+            same_uid_process_auth_readable=process['auth_readable'],
             explicit_sandbox_positive_read=positive,
-            platform_sandbox_state='verified' if positive and writable else 'unavailable',
-            sandbox_setup_failure=None if positive and writable else setup_failure,
-            sandbox_setup_detail=None if positive and writable else setup_detail,
-            explicit_sandbox_denials=denials if positive and writable else None,
+            platform_sandbox_state='verified' if verified else 'failed-denial' if controls else 'unavailable',
+            sandbox_setup_failure=None if controls else setup_failure,
+            sandbox_setup_detail=None if controls else setup_detail,
+            explicit_sandbox_denials=denials if controls else None,
             approved_write=writable,
-            unapproved_write_denied=denied_write if positive and writable else None,
+            unapproved_write_denied=denied_write if controls else None,
             unknown_rpc_rejected='error' in unknown,
             omitted_sandbox_reads_controller_sentinel=bypass,
             transport='actual-official-exec-server-stdio',
-            enforcement='platform-sandbox' if positive and writable else 'unverified-positive-control-failed',
+            enforcement='platform-sandbox' if verified else 'unverified-denial-failed' if controls else 'unverified-positive-control-failed',
             limitations=['not-model-tool-routing-proof', 'not-cross-user-or-VM-proof',
                          'not-network-resource-or-descendant-termination-proof'])
 

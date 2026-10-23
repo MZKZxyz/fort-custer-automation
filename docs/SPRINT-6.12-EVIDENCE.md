@@ -151,3 +151,47 @@ canary offline rehearsal, Offline activation contracts and Offline infrastructur
 security (including normal/optimized regressions and its isolated rehearsal).
 The final follow-up commits change evidence documentation only; GitHub reruns
 checks on those commits as usual.
+
+## Linux executor CI correction after the documentation follow-up
+
+[Run 39927040701](https://github.com/MZKZxyz/fort-custer-automation/actions/runs/39927040701)
+failed on Ubuntu in `test_real_transport_same_uid_auth_counterexample_and_unknown_rpc`.
+The report had `same_uid_auth_readable=true`, but its single process/read sample
+had `same_uid_process_auth_readable=false`; bubblewrap's independent filesystem
+sandbox positive control failed with `RTM_NEWADDR: Operation not permitted`.
+The successful earlier run remains historical evidence, not a guarantee that
+this subsequent run or environment supported the same operations.
+
+The diagnostic now separates three observations:
+
+- A same-UID local `/bin/cat` subprocess reads a nonsecret baseline positive
+  control and then the private synthetic authentication marker, without invoking
+  a sandbox helper. The direct executor filesystem counterexample and omitted
+  policy/controller sentinel check remain required.
+- Official executor process RPCs get their own positive control. Output is
+  collected with sequence cursors through terminal status (five bounded reads),
+  rather than equating the first output sample with completed execution. Failed
+  startup/helper control or missing terminal evidence reports `unavailable` and
+  null credential-access evidence. A helper failure after a successful control
+  also remains unavailable, not an observed access denial. An actual observed
+  denial requires a successful control and explicit terminal denial evidence;
+  the real-executor test still rejects that result as the expected counterexample.
+- Filesystem sandbox verification requires successful permitted read/write
+  controls, all five explicit read denials and the unapproved write denial.
+  Failed setup returns null denial evidence. A genuine failed denial now reports
+  `failed-denial`, never `verified`, and fails the existing real security test.
+
+Every outcome still has `live_ready=false` and `inference=false`. The macOS
+read/write and all five sentinel assertions, unknown RPC rejection, source-only
+synthetic fixtures, strict `FC_REQUIRE_CODEX_SANDBOX=1` behavior and all admission
+assertions remain intact. There are no changes to real credential handling,
+API accounting, budget limits, grants or live gates.
+
+Nine deterministic regression tests cover split/delayed process output,
+missing terminal evidence, Linux bubblewrap network-namespace failure before
+and after a successful control, positive-control requirements, explicit observed
+denial classification, preserved successful Mac controls and missing write or
+failed denial evidence. Local real official executor results: **16/16 pass**,
+zero skips, normal **0.390 s**, optimized **0.837 s**. The local filesystem
+sandbox is explicitly unavailable and is not credited as isolation. Lint and
+compile checks pass. Hosted rerun results are reported with the PR fix outcome.
