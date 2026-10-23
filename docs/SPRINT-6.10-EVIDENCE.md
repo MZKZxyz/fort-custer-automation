@@ -42,6 +42,8 @@ issue or independent approval yet. No Issue #3 coding authorization was reused.
 | `python3 -O -m unittest discover -s tests -p test_activation_readiness.py -q` | 18 tests in 6.304s, OK |
 | Final preparation suite after external-QA STOP/guard test | 19 tests in 3.878s, OK |
 | Final optimized preparation suite | 19 tests in 3.744s, OK |
+| Final full regression after macOS transport correction | 485 tests in 121.057s, OK, skipped=1 |
+| Broker suite after transport correction | 31 tests in 5.965s, OK |
 | `python3 src/infrastructure.py lint` | Pinned image inputs and live gate validated |
 | `python3 -m compileall -q src infra tests` | Exit 0 |
 | `git diff --check` | Exit 0 |
@@ -131,3 +133,17 @@ https://github.com/MZKZxyz/fort-custer-automation/actions/runs/39913970168
 Planner and execution-simulation workflows passed at that head. Remaining
 workflows were still running at this observation; final results are recorded
 in the draft PR description when available.
+
+Code head `c7d2a4d237274092451521947ae331c1bd896da1`: **both Ubuntu and
+macOS matrix jobs passed** broker tests, all 19 preparation tests, optimized
+preparation tests and the synthetic subprocess/QA demonstration:
+https://github.com/MZKZxyz/fort-custer-automation/actions/runs/39914343908
+The final local 485-test regression above includes the transport correction and
+external-QA guard regression. This is actual hosted macOS kernel-API/protocol
+test evidence, not verification of the user's Mac or distinct-principal sandbox.
+The final evidence-only documentation commit does not change tested software.
+
+| Hosted job | Broker | Preparation | Optimized preparation |
+| --- | --- | --- | --- |
+| macOS, Python 3.12.10, Node 22.23.3 | 31 tests, 32.969s, OK | 19 tests, 24.293s, OK | 19 tests, 25.471s, OK |
+| Ubuntu, Python 3.12.15, Node 22.23.3 | 31 tests, 7.282s, OK | 19 tests, 3.985s, OK | 19 tests, 3.986s, OK |
