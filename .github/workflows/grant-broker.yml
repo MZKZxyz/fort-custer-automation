@@ -25,6 +25,10 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+      - name: Offline API reservations, transport and hostile tool contracts
+        run: |
+          python -m unittest discover -s tests -p test_api_controller.py -v
+          python -O -m unittest discover -s tests -p test_api_controller.py -q
       - name: Broker, kernel peer authentication and failure tests
         run: python -m unittest discover -s tests -p test_grant_broker.py -v
       - name: Activation preparation, immutable bundles and exhaustion holds

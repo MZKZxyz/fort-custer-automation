@@ -232,3 +232,20 @@ VM management sockets. Never interpret an account name in JSON as provisioning.
 
 Do not activate if a required control cannot be measured. The fail-closed
 architecture is the delivered boundary until those prerequisites are reviewed.
+
+## Sprint 6.12 API boundary
+
+The [trusted Responses controller](API-CONTROLLER.md) reads API credentials only
+inside its trusted network helper. No provider key, API environment variable,
+auth header or raw model text enters a worker transport or receipt. Hosted and
+network-capable tools are absent. `api_tools.py` defines only a synthetic,
+manifest-bound replacement-text proposal contract. It never opens model-selected
+paths or executes operations; every executable receiver request is rejected.
+
+This is not proof of deployed isolation. Same-UID account separation and environment
+filtering remain insufficient. Before coding, independently demonstrate protected
+controller/key/ledger/publisher denial, reviewed-source-only filesystem access,
+network/resource controls and whole-worker termination. Live API task dispatch
+is unavailable even with caller-supplied isolation receipts. Synthetic broker
+integration preserves STOP/fences/source freshness and cannot authorize a live
+receiver. Use the controller's read-only `readiness`, `status` and `audit` commands.

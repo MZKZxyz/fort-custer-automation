@@ -641,3 +641,31 @@ scope/expiry/current branch state; tested backups/recovery; separate activation
 review. Subscription counters are telemetry; $10/day remains an operator goal.
 No identity, credential, VM, baseline or activation is presumed ready. Stop until
 these are resolved in a separately reviewed implementation and deployment.
+
+## Sprint 6.12 API preparation — no coding activation
+
+Read [API-CONTROLLER.md](API-CONTROLLER.md) before any API action. Its one-request
+connectivity command is operator-only, disabled by default, text-only, budgeted
+and not a canary approval. Do not run it from Codex or CI. A successful receipt
+establishes connectivity only; it does not establish isolation or task admission.
+
+The selected task remains `freeze-direction-vectors-s610` at server revision
+`d82c272b47486161bf9f37508b69fe3240678655`. Only
+`tools/maze-analyzer/solver.js` and `test/analyzer.test.js` may change after a new
+explicit task approval. Preserve generator, movement, invalid-direction and
+fire/item semantics. Require both Node syntax checks, all analyzer tests and the
+independently installed `infra/qa-assets/direction-vectors.mjs` oracle in isolated
+QA. The current oracle should fail on unfixed source. Select/create the matching
+issue; the review example and old issue 3 are not authorization. API usage policy
+also requires a new operator review; the retained subscription task example is
+unchanged and must not silently convert to API authority.
+
+Required sequence: operator task/source/model/tool review → authoritative live
+broker fenced grant → conservative API budget reservation → trusted inference →
+strict schema and manifest validation → verified isolated receiver → independent
+isolated candidate reconstruction/QA/oracle → broker finalization → separate
+operator authorization for draft publication. Each gate needs independent
+evidence; STOP and expiry remain effective at every transition. Keep zero live
+workers until live broker admission, receivers, resource/network/watchdog and
+publisher integration are reviewed. There is no command in Sprint 6.12 that
+unlocks this sequence. Autonomous approval, merging and deployment stay disabled.
