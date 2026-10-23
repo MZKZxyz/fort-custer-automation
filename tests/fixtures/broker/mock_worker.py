@@ -17,8 +17,9 @@ for fd in range(3, 256):
     try: os.fstat(fd)
     except OSError: continue
     raise RuntimeError('Unexpected inherited descriptor')
-if set(os.environ)-{'PATH', 'HOME', 'LANG', 'LC_CTYPE'}:
-    raise RuntimeError('Unexpected inherited environment')
+unexpected = set(os.environ)-{'PATH', 'HOME', 'LANG', 'LC_CTYPE'}
+if unexpected:
+    raise RuntimeError('Unexpected inherited environment keys: '+','.join(sorted(unexpected)))
 
 
 def canonical(doc):
