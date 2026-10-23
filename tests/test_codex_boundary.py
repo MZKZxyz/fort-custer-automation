@@ -1,5 +1,6 @@
 """Real official executor probes plus fail-closed admission tests; never inference."""
 import os
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -55,6 +56,7 @@ class RealExecutorTests(unittest.TestCase):
         if not Path(binary).is_absolute() or not Path(binary).is_file():
             raise ValueError('Explicit absolute official Codex binary required')
         cls.report = probe(binary)
+        print(json.dumps(cls.report, sort_keys=True))
 
     def test_real_transport_same_uid_auth_counterexample_and_unknown_rpc(self):
         self.assertTrue(self.report['same_uid_auth_readable'])
@@ -64,13 +66,15 @@ class RealExecutorTests(unittest.TestCase):
         self.assertFalse(self.report['inference'])
         self.assertFalse(self.report['live_ready'])
 
-    def test_real_platform_denials_require_positive_read_and_write_controls(self):
+    def test_real_platform_result_never_claims_denial_without_positive_controls(self):
         if self.report['platform_sandbox_state'] != 'verified':
             self.assertIsNone(self.report['explicit_sandbox_denials'])
             self.assertIsNone(self.report['unapproved_write_denied'])
             if os.environ.get('FC_REQUIRE_CODEX_SANDBOX') == '1':
                 self.fail('Platform sandbox positive controls failed: '+str(self.report))
-            self.skipTest('Platform sandbox unavailable; no OS denial guarantee established')
+            self.assertEqual(self.report['enforcement'], 'unverified-positive-control-failed')
+            self.assertFalse(self.report['live_ready'])
+            return  # A tested blocker result, not a verified OS denial.
         self.assertTrue(self.report['explicit_sandbox_positive_read'])
         self.assertTrue(self.report['approved_write'])
         self.assertEqual(self.report['explicit_sandbox_denials'], [True]*5)

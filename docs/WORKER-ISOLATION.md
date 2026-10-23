@@ -15,8 +15,10 @@ read/write controls first. In this managed cloud the helper fails because its
 app-server socket directory is not accessible with required ownership/mode.
 Denial fields are therefore null, not passing. Do not change permissions on the
 host Codex socket directory to make a probe pass. Target Mac isolation is still
-unverified. CI now runs the actual pinned executor probe on Linux and macOS;
-`FC_REQUIRE_CODEX_SANDBOX=1` makes missing enforcement a failure there.
+unverified. CI runs the actual pinned executor probe on Linux and macOS and
+tests that unavailable enforcement is reported as blocked. The operator's
+`FC_REQUIRE_CODEX_SANDBOX=1` invocation requires successful enforcement; CI
+diagnostic success cannot substitute for that activation prerequisite.
 
 | Capability | Diagnostic / future live policy |
 | --- | --- |

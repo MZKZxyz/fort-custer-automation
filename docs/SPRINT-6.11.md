@@ -18,6 +18,9 @@ sandbox policies using the real transport. Platform sandbox denial probes use
 positive read **and write** controls. Helper failure is reported unavailable;
 it never counts as a denied-read success. This cloud's nested sandbox prevents
 the positive control from starting; deployment OS isolation is unverified.
+Hosted Linux also fails helper preparation of the exact-file writable profile,
+including a `Not a directory` panic. CI tests the fail-closed diagnostic result;
+the separate strict operator invocation still rejects unavailable enforcement.
 
 `CodexWorker.run`, authoritative `Broker.dispatch_live`, coordinator and legacy
 entrypoints continue to fail closed before execution. Readiness now includes

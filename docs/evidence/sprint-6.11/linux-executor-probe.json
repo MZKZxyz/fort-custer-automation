@@ -15,6 +15,7 @@
   "platform_sandbox_state": "unavailable",
   "same_uid_auth_readable": true,
   "same_uid_process_auth_readable": true,
+  "sandbox_setup_detail": "fs sandbox helper failed with status exit status: 1: error building bubblewrap command: app-server socket directory must be a user-owned directory with mode 0700",
   "sandbox_setup_failure": "app-server-socket-directory-unavailable",
   "schema": "codex-boundary-probe-v1",
   "synthetic_only": true,
