@@ -1,0 +1,37 @@
+{
+  "approved_write": true,
+  "cli_version": "0.163.0",
+  "enforcement": "platform-sandbox",
+  "explicit_sandbox_denials": [
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "explicit_sandbox_positive_read": true,
+  "inference": false,
+  "limitations": [
+    "not-model-tool-routing-proof",
+    "not-cross-user-or-VM-proof",
+    "not-network-resource-or-descendant-termination-proof"
+  ],
+  "live_ready": false,
+  "omitted_sandbox_reads_controller_sentinel": true,
+  "platform_sandbox_state": "verified",
+  "same_uid_auth_readable": true,
+  "same_uid_process_auth_readable": true,
+  "sandbox_setup_detail": null,
+  "sandbox_setup_failure": null,
+  "schema": "codex-boundary-probe-v1",
+  "synthetic_only": true,
+  "transport": "actual-official-exec-server-stdio",
+  "unapproved_write_denied": true,
+  "unknown_rpc_rejected": true,
+  "observation": {
+    "commit": "a15de1ec85da7d529311b07976081a78f9df15b3",
+    "run": 39920209096,
+    "job": 120303342433,
+    "platform": "macos-latest"
+  }
+}

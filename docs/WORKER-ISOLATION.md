@@ -20,6 +20,13 @@ tests that unavailable enforcement is reported as blocked. The operator's
 `FC_REQUIRE_CODEX_SANDBOX=1` invocation requires successful enforcement; CI
 diagnostic success cannot substitute for that activation prerequisite.
 
+Hosted macOS passed the real executor's permitted read/write controls, all five
+protected sentinel read denials and the unapproved-write denial. See the
+[retained report](evidence/sprint-6.11/hosted-macos-executor-probe.json). This
+confirms that particular OS profile, not global model-tool mediation, deployed
+guest identity, network/resource controls or termination. The target operator
+installation still needs independent verification.
+
 | Capability | Diagnostic / future live policy |
 | --- | --- |
 | Inference | None in diagnostic; trusted supported client only in future design |

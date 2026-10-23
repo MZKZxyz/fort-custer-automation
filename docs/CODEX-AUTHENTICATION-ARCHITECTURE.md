@@ -39,6 +39,9 @@ protected daemon-directory prerequisite. Neither environment demonstrates the
 requested exact-file write profile. The diagnostic retains these observations;
 it never converts setup failures into successful denied-access tests. These
 findings concern the tested profile/platforms, not every possible VM sandbox.
+Hosted macOS subsequently enforced this profile with positive read/write
+controls, five protected read denials and an unapproved-write denial. That
+platform success does not resolve A's separate complete-tool-mediation blocker.
 
 **Blocking invariant:** this release cannot establish that every executable
 capability crosses an immutable broker-controlled boundary, with no trusted-host

@@ -21,6 +21,9 @@ the positive control from starting; deployment OS isolation is unverified.
 Hosted Linux also fails helper preparation of the exact-file writable profile,
 including a `Not a directory` panic. CI tests the fail-closed diagnostic result;
 the separate strict operator invocation still rejects unavailable enforcement.
+Hosted macOS subsequently passed the actual sandbox positive controls, all five
+protected-read denials and the unapproved-write denial. This is scoped platform
+evidence, not proof that every generated capability crosses that boundary.
 
 `CodexWorker.run`, authoritative `Broker.dispatch_live`, coordinator and legacy
 entrypoints continue to fail closed before execution. Readiness now includes

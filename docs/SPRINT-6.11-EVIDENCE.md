@@ -66,7 +66,7 @@ isolation or hostile-descendant termination was demonstrated here.
 | Requested attack | Available evidence / remaining limit |
 | --- | --- |
 | Controller policy/approval ledger/publisher credential reads | Synthetic sentinel denial attempts; OS enforcement unavailable, no real ledger/secret read |
-| Escape workspace | Synthetic protected path read without sandbox succeeds; explicit sandbox boundary unverified |
+| Escape workspace | Synthetic protected read without sandbox succeeds; Linux enforcement unverified; scoped hosted Mac denials verified below |
 | Unknown executable tool / configuration override / auth mode | Worker hard gate rejects before subprocess or claim; real server rejects unknown RPC |
 | Modify unapproved files | Existing artifact allowlist checks plus attempted actual helper write; no OS success claimed |
 | Reuse execution grants | Existing atomic race, restart/replay and generation-fence tests; synthetic broker only |
@@ -133,6 +133,30 @@ an additional broad macOS full-suite run was still pending when this section
 was prepared and no passing result is claimed for it. The maintained workflow
 runs the full suite on Linux and the requested targeted tests on both platforms.
 Hosted CI is not evidence about an operator's actual Mac or VM.
+
+### Hosted macOS: actual OS denial controls pass
+
+The final [macOS job 120303342433](https://github.com/MZKZxyz/fort-custer-automation/actions/runs/39920209096/job/120303342433)
+at `a15de1ec85da7d529311b07976081a78f9df15b3` passed: broker **31 tests**
+(41.682 seconds), activation **19 tests** (35.046 seconds), optimized activation
+**19 tests** (33.421 seconds), real executor diagnostic **6 tests**, zero skips
+(1.782 seconds), and synthetic source/QA transfer. The maintained Ubuntu job
+in that same run also completed successfully: full regressions **489 tests**,
+**2 expected skips**, **136.371 seconds**.
+
+[Retained macOS probe](evidence/sprint-6.11/hosted-macos-executor-probe.json)
+reports `platform_sandbox_state=verified`: permitted reads and writes succeed,
+all **five** denied sentinel reads fail, and unapproved file writes fail with
+the file unchanged. These are actual official executor/platform sandbox calls,
+not mocks. Both filesystem and subprocess auth reads still succeed **without**
+the sandbox, and omitting the policy reads the protected controller sentinel.
+
+This provides scoped OS enforcement evidence on a hosted Mac. It does not
+establish complete model-tool routing, cross-user/VM deployment, MCP/network
+denial, resource enforcement, broker authorization or whole-guest termination.
+The operator's actual deployment remains unverified and live capacity remains
+zero. The earlier cloud/Ubuntu failure observations remain valid for those
+environments and are not generalized to macOS.
 
 ## Canary source refresh
 
