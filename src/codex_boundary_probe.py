@@ -136,6 +136,7 @@ def probe(binary):
             setup_failure = ('app-server-socket-directory-unavailable' if
                 'app-server socket directory must be a user-owned directory with mode 0700' in
                 positive.get('error', {}).get('message', '') else 'positive-control-failed')
+            setup_detail = positive.get('error', {}).get('message', '').replace(str(root), '<fixture>')[:1024]
             positive = ('result' in positive and base64.b64decode(
                 positive['result']['dataBase64'], validate=True) == b'baseline')
             def write(path):
@@ -154,6 +155,7 @@ def probe(binary):
             explicit_sandbox_positive_read=positive,
             platform_sandbox_state='verified' if positive and writable else 'unavailable',
             sandbox_setup_failure=None if positive and writable else setup_failure,
+            sandbox_setup_detail=None if positive and writable else setup_detail,
             explicit_sandbox_denials=denials if positive and writable else None,
             approved_write=writable,
             unapproved_write_denied=denied_write if positive and writable else None,

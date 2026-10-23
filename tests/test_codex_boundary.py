@@ -69,7 +69,7 @@ class RealExecutorTests(unittest.TestCase):
             self.assertIsNone(self.report['explicit_sandbox_denials'])
             self.assertIsNone(self.report['unapproved_write_denied'])
             if os.environ.get('FC_REQUIRE_CODEX_SANDBOX') == '1':
-                self.fail('Platform sandbox positive controls failed; deployment cannot be approved')
+                self.fail('Platform sandbox positive controls failed: '+str(self.report))
             self.skipTest('Platform sandbox unavailable; no OS denial guarantee established')
         self.assertTrue(self.report['explicit_sandbox_positive_read'])
         self.assertTrue(self.report['approved_write'])
