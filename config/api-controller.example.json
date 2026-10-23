@@ -1,0 +1,16 @@
+{
+  "schema": "responses-controller-v1",
+  "connectivity_enabled": false,
+  "credential_file": "~/fort-custer-local/openai-api-key",
+  "budget_file": "~/fort-custer-local/api-budget.sqlite",
+  "timezone": "America/Los_Angeles",
+  "daily_nano_usd": 10000000000,
+  "lifetime_nano_usd": 100000000000,
+  "pricing": {
+    "version": "openai-standard-usd-2025-08-07-review-2026-10-23",
+    "model": "gpt-5-nano-2025-08-07",
+    "input_nano_usd_per_token": 50,
+    "cached_nano_usd_per_token": 5,
+    "output_nano_usd_per_token": 400
+  }
+}

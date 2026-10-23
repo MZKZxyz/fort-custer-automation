@@ -383,3 +383,12 @@ Both inspection commands intentionally exit 1; inventory cannot authorize
 activation or convert historical approvals. The
 [installation plan example](config/single-worker-activation.example.json)
 is disabled and is not runtime activation configuration.
+
+## Sprint 6.12: trusted Responses controller preparation
+
+The [API controller](docs/API-CONTROLLER.md) adds durable $10/day and $100 lifetime
+local spending reservations, offline broker integration and a disabled operator-only
+text connectivity test. [Sprint scope](docs/SPRINT-6.12.md) and
+[evidence](docs/SPRINT-6.12-EVIDENCE.md) record the exact tests and remaining blockers.
+`python3 -m src.api_controller readiness` is read-only and requires no key.
+Live coding remains disabled; no real API calls occur in tests or CI.
