@@ -1,4 +1,4 @@
-"""Schema-derived synthetic fixtures only; never provider captures or live calls."""
+"""Schema- and evidence-derived synthetic fixtures; no captures or live calls."""
 import copy
 import json
 from pathlib import Path
@@ -202,7 +202,7 @@ class EnvelopeReviewTests(unittest.TestCase):
     reject = ResponseSchemaTests.reject
     def test_complete_reviewed_inventory_fixture(self):
         r=fixture('envelope-all-fields.json')
-        self.assertEqual(set(r),envelope.ACCEPTED_FIELDS)
+        self.assertEqual(set(r),envelope.OPENAPI_FIELDS | {'store'})
         self.assertEqual(len(envelope.SDK_FIELDS),36)
         self.assertEqual(len(envelope.OPENAPI_FIELDS),37)
         self.assertEqual(envelope.OPENAPI_FIELDS-envelope.SDK_FIELDS,{'output_text'})
@@ -369,4 +369,159 @@ class ValidationEvidenceTests(unittest.TestCase):
             self.assertNotIn(b'SYNTHETIC_',b.path.read_bytes())
 
 
+class EvidenceCompatibilityTests(unittest.TestCase):
+    reject = ResponseSchemaTests.reject
+
+    def test_exact_zero_tool_usage_is_optional_discarded_and_not_priced(self):
+        r = fixture('observed-incomplete.json')
+        expected = validate(r)
+        del r['tool_usage']
+        self.assertEqual(validate(r),expected)
+        self.assertNotIn('tool_usage',e.canonical(expected))
+
+    def test_every_tool_counter_rejects_nonzero_negative_and_malformed_values(self):
+        paths = [('image_gen','input_tokens'),('image_gen','output_tokens'),
+                 ('image_gen','total_tokens'),('web_search','num_requests')]
+        paths += [('image_gen',details,kind) for details in
+                  ('input_tokens_details','output_tokens_details') for kind in ('image_tokens','text_tokens')]
+        for path in paths:
+            for value, rule in [(1,'activity_disabled'),(-1,'counter_bounds'),
+                    (True,'counter_type'),(False,'counter_type'),(0.0,'counter_type'),('0','counter_type'),
+                    (None,'counter_type'),({},'counter_type'),([],'counter_type')]:
+                r = fixture('observed-incomplete.json'); node = r['tool_usage']
+                for key in path[:-1]: node = node[key]
+                node[path[-1]] = value
+                with self.subTest(path=path,value=value): self.reject(r,'tool_usage',rule)
+            for value in (float('nan'),float('inf'),-float('inf')):
+                r = fixture('observed-incomplete.json'); node = r['tool_usage']
+                for key in path[:-1]: node = node[key]
+                node[path[-1]] = value
+                with self.subTest(path=path,value=value), self.assertRaises(c.APIUnavailable):
+                    c.receipt(json.dumps(r).encode(),c.payload('Reply with OK.',16),c.DEFAULT_PRICING)
+
+    def test_tool_usage_rejects_unknown_dimensions_missing_keys_and_hostile_shapes(self):
+        branches = [(),('image_gen',),('web_search',),
+                    ('image_gen','input_tokens_details'),('image_gen','output_tokens_details')]
+        for path in branches:
+            for extra in ('audio','price','function_call','SYNTHETIC_PRIVATE_KEY'):
+                for value in (0,None,{'arguments':'SYNTHETIC_COMMAND'}):
+                    r = fixture('observed-incomplete.json'); node = r['tool_usage']
+                    for key in path: node = node[key]
+                    node[extra] = value
+                    with self.subTest(path=path,extra=extra,value=value):
+                        diag = self.reject(r,'tool_usage','unknown_dimension')
+                        self.assertNotIn('SYNTHETIC_',e.canonical(diag))
+            r = fixture('observed-incomplete.json'); node = r['tool_usage']
+            for key in path: node = node[key]
+            del node[next(iter(node))]
+            self.reject(r,'tool_usage','shape')
+            for value in (None,[],0,'SYNTHETIC_COMMAND'):
+                r = fixture('observed-incomplete.json'); parent = r
+                for key in ('tool_usage',)+path[:-1] if path else ():
+                    parent = parent[key]
+                parent[path[-1] if path else 'tool_usage'] = value
+                with self.subTest(path=path,value=value): self.reject(r,'tool_usage','shape')
+
+    def test_observed_zero_usage_is_sanitized_and_durably_settled(self):
+        r = fixture('observed-incomplete.json')
+        expected = validate(r)
+        self.assertEqual(expected['status'], 'incomplete')
+        self.assertEqual(expected['usage'], dict(input_tokens=0,output_tokens=0,
+            cached_input_tokens=0,reasoning_tokens=0))
+        self.assertEqual(expected['estimated_cost_nano_usd'],0)
+        self.assertEqual(expected['tools_executed'],0)
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(c.ResponsesTransport, 'send', side_effect=AssertionError('No live API')), \
+                patch('src.api_controller.http.client.HTTPSConnection', side_effect=AssertionError('No network')):
+            path = Path(temp).resolve()/'budget.sqlite'
+            b = Budget(path); b.initialize()
+            fake = Mock(); fake.send.return_value = e.canonical(r).encode()
+            result = c.Controller(b,fake)._request('a'*32,c.payload('Reply with OK.',16),
+                {'purpose':'offline-evidence'},lambda:None)
+            self.assertEqual(result,expected)
+            reopened = Budget(path)
+            self.assertEqual(reopened.status()['unresolved_requests'],0)
+            self.assertEqual(reopened.status()['lifetime_encumbered_nano_usd'],0)
+            self.assertEqual(json.loads(reopened.audit()[0]['evidence'])['maximum_nano_usd'],20_006_400)
+            self.assertNotIn(b'SYNTHETIC_CIPHERTEXT',path.read_bytes())
+            self.assertNotIn('frequency_penalty',e.canonical(reopened.audit()))
+            self.assertNotIn('presence_penalty',e.canonical(reopened.audit()))
+            self.assertNotIn('tool_usage',e.canonical(reopened.audit()))
+            self.assertNotIn(b'tool_usage',path.read_bytes())
+            fake.send.assert_called_once()
+
+    def test_penalty_echoes_are_finite_discarded_metadata(self):
+        baseline = validate(fixture())
+        for name in ('frequency_penalty', 'presence_penalty'):
+            for value in (0.0, -2.0, 2, 1e100):
+                r = fixture(); r[name] = value
+                self.assertEqual(validate(r), baseline)
+            for value in (None, True, '0', {}, [], float('nan'), float('inf'), -float('inf')):
+                r = fixture(); r[name] = value
+                with self.subTest(name=name, value=value), self.assertRaises(c.APIUnavailable):
+                    # json.dumps deliberately emits nonstandard NaN/Infinity to
+                    # exercise production decoding rather than the test encoder.
+                    c.receipt(json.dumps(r).encode(), c.payload('Reply with OK.',16), c.DEFAULT_PRICING)
+
+    def test_connectivity_profile_and_worker_ceiling(self):
+        request = c.connectivity_payload()
+        self.assertEqual(request['input'], 'Reply with OK.')
+        self.assertEqual(request['max_output_tokens'], 256)
+        self.assertEqual(request['reasoning'], {'effort':'minimal'})
+        self.assertEqual(request['tools'], [])
+        self.assertIs(request['store'], False)
+        c.validate_request(e.canonical(request).encode())
+        self.assertEqual(c.maximum_charge(c.DEFAULT_PRICING, 256), 20_102_400)
+        self.assertEqual(c.payload('worker')['max_output_tokens'], 64)
+        with self.assertRaises(ValueError): c.payload('worker', 256)
+        for changes in ({'input':'different prompt'}, {'max_output_tokens':257},
+                        {'max_output_tokens':255}, {'store':True},
+                        {'tools':[{'type':'web_search'}]}, {'reasoning':{'effort':'high'}}):
+            bad = dict(request, **changes)
+            with self.subTest(changes=changes), self.assertRaises(c.APIUnavailable):
+                c.validate_request(e.canonical(bad).encode())
+
+    def test_256_reservation_survives_restart_and_blocks_another_request(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp).resolve()/'budget.sqlite'
+            b = Budget(path); b.initialize()
+            amount = c.maximum_charge(c.DEFAULT_PRICING,256)
+            b.reserve('a'*32,'b'*64,amount)
+            reopened = Budget(path)
+            self.assertEqual(reopened.status()['unresolved_nano_usd'],20_102_400)
+            with self.assertRaises(ValueError): reopened.reserve('c'*32,'d'*64,amount)
+            r = fixture('observed-incomplete.json'); r['max_output_tokens'] = 256
+            result = c.receipt(e.canonical(r).encode(),c.connectivity_payload(),c.DEFAULT_PRICING)
+            reopened.settle('a'*32,result['estimated_cost_nano_usd'],result)
+            self.assertEqual(Budget(path).status()['lifetime_encumbered_nano_usd'],0)
+            self.assertEqual(Budget(path).audit()[-1]['kind'],'settled')
+
+    def test_connectivity_receipt_bounds_and_echo_conflicts(self):
+        request = c.connectivity_payload()
+        for status in ('completed','incomplete'):
+            for output in (0,256):
+                r = fixture('incomplete.json')
+                r.update(status=status, output=[], max_output_tokens=256,
+                         incomplete_details=None if status == 'completed' else {'reason':'max_output_tokens'})
+                r['usage'].update(input_tokens=0, output_tokens=output, total_tokens=output,
+                    input_tokens_details={'cached_tokens':0,'cache_write_tokens':0},
+                    output_tokens_details={'reasoning_tokens':output})
+                result = c.receipt(e.canonical(r).encode(),request,c.DEFAULT_PRICING)
+                self.assertEqual(result['estimated_cost_nano_usd'],output*400)
+                r['usage'].update(output_tokens=257,total_tokens=257)
+                with self.assertRaises(c.APIUnavailable):
+                    c.receipt(e.canonical(r).encode(),request,c.DEFAULT_PRICING)
+        r = fixture(); r['max_output_tokens'] = 16
+        with self.assertRaises(c.APIUnavailable):
+            c.receipt(e.canonical(r).encode(),request,c.DEFAULT_PRICING)
+
+    def test_operator_connectivity_uses_reviewed_request_without_transport(self):
+        with patch.object(c.Controller, '_request', return_value={'synthetic':True}) as send:
+            controller = c.Controller(None,c.ResponsesTransport('/never/read/key'))
+            self.assertEqual(controller.connectivity(operator_enabled=True), {'synthetic':True})
+            self.assertEqual(send.call_args.args[1],c.connectivity_payload())
+            self.assertEqual(send.call_args.args[2],{'purpose':'operator-text-only-connectivity'})
+
+
 if __name__=='__main__':unittest.main()
+

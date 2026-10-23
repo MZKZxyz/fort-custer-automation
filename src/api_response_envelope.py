@@ -17,8 +17,11 @@ DISCARDED_TEXT_FIELDS = frozenset({'output_text'})
 OPENAPI_FIELDS = SDK_FIELDS | DISCARDED_TEXT_FIELDS
 # store is present in the official example and CreateResponse, but not the
 # Response properties / generated SDK serialized fields. Keep its strict false check.
-ACCEPTED_FIELDS = OPENAPI_FIELDS | {'store'}
+# Operator-observed penalty echoes are validated as finite numbers and discarded.
+# Operator-observed tool_usage is accepted only with reviewed zero counters.
+ACCEPTED_FIELDS = OPENAPI_FIELDS | {'store','frequency_penalty','presence_penalty','tool_usage'}
 # Official CreateResponse names outside the response envelope. Diagnostic names
 # only: these remain rejected even when null / empty / apparently harmless.
 REQUEST_ONLY_FIELDS = frozenset({'context_management','include','input','stream','stream_options'})
 DIAGNOSTIC_FIELDS = ACCEPTED_FIELDS | REQUEST_ONLY_FIELDS
+

@@ -1,5 +1,10 @@
 # Responses envelope review — 2026-10-23
 
+Follow-up operator evidence identifies finite numeric `frequency_penalty` and
+`presence_penalty` echoes outside this historical OpenAPI inventory. They are
+now validated and discarded. The operator also supplied the exact nested `tool_usage` structure;
+only the reviewed integer-zero counters are accepted and discarded. See [the compatibility follow-up](RESPONSES-OBSERVED-COMPATIBILITY.md).
+
 ## Scope and evidence
 
 The third operator attempt reported HTTP 200, `response_schema_invalid`,
@@ -150,3 +155,4 @@ malformed diagnostic IPC, nested tool/modality and usage rejections, unpriced
 cache writes, and a disposable unresolved reservation with one dispatch and no
 retry. Existing cross-platform CI runs this suite normally and with `python -O`.
 Final test counts and all six workflow outcomes are recorded in the draft PR.
+
