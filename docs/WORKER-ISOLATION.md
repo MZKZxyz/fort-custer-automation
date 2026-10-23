@@ -1,5 +1,86 @@
 # Worker isolation deployment profile
 
+## Sprint 6.10 credential conclusion and Mac installation contract
+
+**Direct personal-account CLI authentication is unsupported for this worker.**
+The pinned CLI 0.163.0 integration expects an existing ChatGPT login in an
+operator home. Moving that home or its account files into a guest gives generated
+code under the same principal a potential credential path. Clearing environment,
+setting CODEX_HOME, denying network, the CLI's workspace sandbox, a successful
+`login status`, or a mock UID does not prove account files/keychain are inaccessible.
+No Mac credential-denial probe or supported tool/auth separation was available.
+Do not copy auth.json, refresh/access tokens, personal keychain material or account
+directories, forward SSH agents, or use an undocumented external-token login.
+
+Supported deployment choices for separate review:
+
+* A documented Codex-supported model/tool separation mechanism, if one becomes
+  available and independently verified: authentication stays in a trusted relay
+  principal, every generated command/file action executes in a credential-free
+  disposable VM, and the relay exposes only task-bound model operations.
+  **No such subscription-compatible relay is implemented or established here.**
+* A separately consented dedicated worker identity/account or narrowly scoped
+  API credential, only if the operator accepts its credential exposure model,
+  terms and actual billing limits. A credential broker outside generated-code
+  access is still preferred. This is a different reviewed provisioning/billing
+  plan, not an automatic subscription fallback. No dedicated account or API
+  credential is provisioned by this release.
+
+Until a supported choice passes independent review, authentication readiness is
+blocked, and no real worker adapter can execute. The adapter's fail-closed result
+is intentional; it must not be replaced with a model-generated “verified” receipt.
+
+### Required administrator profile (manual provisioning only)
+
+Prefer two disposable Linux VMs on the Mac, one worker and one QA, managed by an
+administrator-owned hypervisor. Disable host shares, clipboard/file integration,
+shared host homes, USB passthrough, Docker/SSH agents and host management sockets.
+The controller, host worker relay, host QA relay and publisher have distinct
+non-admin macOS principals. Controller/relays/publisher are installed outside
+guest-writable storage. The QA relay must be distinct from worker and controller
+UIDs; guest UID 501 matching host UID 501 proves nothing about the guest channel.
+An AF_UNIX host relay authenticates the host peer; its VM hop separately needs
+authenticated, execution-bound vsock/mTLS (including peer identity and replay
+protection). There is no shipped production VM hop in this release.
+
+Manually configure VM vCPU/RAM, bounded nonpersistent disks, process ceilings and
+enforced network policy in the chosen hypervisor. Test IPv4/IPv6, DNS, host
+gateways/link-local and local-service access from the guest. Authentication must
+not require granting generated code unrestricted account/host access.
+An administrator-owned watchdog must terminate the entire worker and QA guest
+on STOP, deadline, lost controller health or cancellation, including detached
+sessions. Confirm absence using the hypervisor, not a guest-authored receipt.
+
+A separate macOS user is only an intermediate supervised option after explicit
+operator approval of its limitations. It cannot satisfy this release's VM/hard
+egress/resource requirements by itself. Do not describe ACL tests or peer UID
+checks as a complete sandbox. This task installs no accounts, launchd services,
+firewall/PF rules, virtualization packages or privileged helpers.
+
+### Actual-principal verification matrix
+
+Run the probes in LIVE-CANARY-RUNBOOK as the real identities/guests. Retain
+non-secret transcripts with release SHA, Mac OS/hypervisor versions, host/guest
+UIDs, ACL/group inventories, VM configuration, executable/QA-asset digests,
+request/response digests and administrator watchdog observations.
+
+| Probe | Required result |
+| --- | --- |
+| Read controller policy and ledger sentinels from worker/QA | Denied; no mounted host path |
+| Read publisher-home sentinel, keychain, SSH/GitHub/cloud credentials | Denied; no credential forwarding or shared agents |
+| Write original application checkout or automation release | Denied; only disposable workspace writable |
+| Wrong controller/worker/QA peer and VM-channel identity | Rejected before source/instructions transmitted |
+| Extra inherited descriptor including deliberately inheritable sentinel | Absent; exact deliberate IPC/stdin/out/err only |
+| Source/QA bundle mutation, extra files, links, mode changes | Rejected before candidate tests |
+| QA changes its source/candidate or writes unexpected files | Rejected; no valid QA receipt |
+| Infinite process/output, forked child and setsid descendant | Hard VM limits; external whole-guest termination confirmed |
+| Controller SIGKILL, lost response, STOP during startup/QA | No replay/replacement; broker holds capacity until real recovery |
+| Subscription exhaustion | Durable hold, no refill/API fallback or periodic retry |
+| Worker tries publisher/controller/host network endpoints | Enforced denial independent of env sanitization |
+
+CI mocks and same-UID subprocess fixtures cannot mark any row verified on the
+Mac. See [Sprint 6.10](SPRINT-6.10.md) for remaining software barriers.
+
 **Reference topology only. Not provisioned or proven by this sprint.**
 A different directory, Python module, JSON UID, environment allowlist or Unix
 peer UID is not a sandbox. The current implementation has no live worker launcher.

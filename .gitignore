@@ -7,3 +7,4 @@ __pycache__/
 examples/latest-report.md
 infra/qa-assets/*
 !infra/qa-assets/README.md
+!infra/qa-assets/direction-vectors.mjs

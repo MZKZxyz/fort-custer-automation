@@ -93,6 +93,12 @@ def authorization(policy_path, execution, task, now, c):
 
 
 class Coordinator:
+    def dispatch_live(self, *args, **kwargs):
+        # Coordinator observations/slots confer no independent live authority.
+        from src.integration_control import block_live_dispatch
+        block_live_dispatch()
+        raise ValueError('Only a separately reviewed unified broker may dispatch')
+
     def __init__(self, config, clock=time.time):
         self.c = validate(json.loads(json.dumps(config)))
         self.path = Path(self.c['ledger']).absolute()

@@ -1,0 +1,18 @@
+{
+  "schema": "single-worker-installation-plan-v1-not-runtime-config",
+  "enabled": false,
+  "live_workers": 0,
+  "future_live_ceiling": 1,
+  "controller": "fc-controller",
+  "worker": "disposable-vm:fc-worker",
+  "qa": "separate-disposable-vm:fc-qa",
+  "publisher": "fc-publisher",
+  "authentication": "blocked-no-supported-credential-isolating-relay-provisioned",
+  "activation": "blocked-versioned-reviewed-mechanism-required",
+  "account_file_forwarding": false,
+  "automatic_refill": false,
+  "automatic_retry": false,
+  "automatic_publication": false,
+  "automatic_merge": false,
+  "deployment": false
+}

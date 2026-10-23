@@ -26,5 +26,9 @@ jobs:
           node-version: '22'
       - name: Broker, kernel peer authentication and failure tests
         run: python -m unittest discover -s tests -p test_grant_broker.py -v
+      - name: Activation preparation, immutable bundles and exhaustion holds
+        run: python -m unittest discover -s tests -p test_activation_readiness.py -v
+      - name: Optimized activation safety checks
+        run: python -O -m unittest discover -s tests -p test_activation_readiness.py -q
       - name: Synthetic subprocess transfer and independent QA
         run: PYTHONPATH=.:tests python tests/test_grant_broker.py --demo

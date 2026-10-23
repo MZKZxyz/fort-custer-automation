@@ -87,6 +87,20 @@ def health(policy_path, coordinator_path=None, now=None, *, broker_path=None, br
         transport_platform.platform.startswith('linux') or transport_platform.platform == 'darwin'
         else 'unsupported-platform')
     report['unsupported_resource_controls'] = ['hard_cpu', 'hard_memory', 'hard_disk', 'network_egress']
+    from src.codex_worker import authentication_boundary
+    report['codex_authentication'] = authentication_boundary()
+    # No caller-supplied attestations are accepted. Even all software tests
+    # passing cannot stand in for target-Mac evidence or reviewed activation.
+    report['activation_prerequisites'] = {
+        'software_integration_complete': 'blocked-missing-live-relay-and-external-qa-service',
+        'broker_migration_verified': 'blocked-no-live-migration',
+        'external_worker_isolation_verified': 'unknown-operator-provisioning-required',
+        'codex_authentication_safely_provisioned': 'blocked-account-boundary-unproven',
+        'independent_qa_isolation_verified': 'unknown-operator-provisioning-required',
+        'publisher_separation_verified': 'unknown-operator-provisioning-required',
+        'resource_enforcement_verified': 'unknown-external-enforcement-required',
+        'live_activation_approved': 'blocked-versioned-activation-not-implemented',
+    }
     if broker_path is not None:
         try:
             from src.grant_broker import Broker

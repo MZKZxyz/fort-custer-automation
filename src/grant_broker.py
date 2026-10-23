@@ -124,6 +124,12 @@ class Broker:
                 e.require(d['request'] == req.decode(), 'Changed authorized request')
                 captured = wire.ingest(req, d['response'].encode(), event['at'])
                 e.require(set(captured) == set(r['authorization']['allowed']), 'Incomplete retained artifacts')
+                if 'usage' in d:
+                    u = d['usage']
+                    e.require(isinstance(u, dict) and set(u) ==
+                              {'input_tokens', 'cached_input_tokens', 'output_tokens'} and
+                              all(type(v) is int and v >= 0 for v in u.values()) and
+                              u['cached_input_tokens'] <= u['input_tokens'], 'Invalid usage evidence')
             if state == 'validated':
                 e.require(d['qa_digest'] == e.digest(d['qa']) and
                           d['qa']['token'] == c['token'] and
@@ -210,7 +216,28 @@ class Broker:
             self._guard(c)
         return raw
 
-    def capture_synthetic(self, c, response):
+    def prepare_worker_synthetic(self, c):
+        """Prepare exact source bytes without contact, launch or new authority."""
+        from src.activation_bundle import worker_bundle
+        with self.tx() as db:
+            r = self._owned(db, c, {'claimed'})
+            self._guard(c); self._fresh(r['authorization'])
+            raw = worker_bundle(r['authorization'], c)
+            self._guard(c)
+        return raw
+
+    def prepare_qa_synthetic(self, c, retained_worker_bundle):
+        """Reconstruct captured output for a separate QA principal, no execution."""
+        from src.activation_bundle import qa_bundle
+        with self.tx() as db:
+            r = self._owned(db, c, {'received'})
+            self._guard(c); self._fresh(r['authorization'])
+            raw = qa_bundle(r['authorization'], c, retained_worker_bundle,
+                            r['events'][-1]['document']['response'].encode(), self.clock())
+            self._guard(c)
+        return raw
+
+    def capture_synthetic(self, c, response, *, usage=None):
         with self.tx(True) as db:
             r = self._owned(db, c, {'starting'})
             self._guard(c)
@@ -219,8 +246,29 @@ class Broker:
             # Require every allowlisted file exactly once. This v1 protocol
             # supports replacement bytes only, never deletions or file creation.
             e.require(set(files) == set(r['authorization']['allowed']), 'Missing/extra authorized output files')
-            self._event(db, c, 'received', dict(**self._fence(c), request=req.decode(), response=response.decode()))
+            document = dict(**self._fence(c), request=req.decode(), response=response.decode())
+            if usage is not None:
+                from src.codex_worker import TOKENS
+                e.require(isinstance(usage, dict) and set(usage) == set(TOKENS) and
+                          all(type(v) is int and v >= 0 for v in usage.values()) and
+                          usage['cached_input_tokens'] <= usage['input_tokens'], 'Invalid usage telemetry')
+                document['usage'] = usage
+            self._event(db, c, 'received', document)
             self._guard(c)
+
+    def capture_codex_synthetic(self, c, response, telemetry):
+        """Controlled adapter experiment only; exhaustion/unknown retains slot.
+
+        Telemetry is untrusted operational data, never billing enforcement or
+        proof that the remote VM and all descendants have terminated.
+        """
+        from src.codex_worker import usage_outcome
+        result = usage_outcome(telemetry)
+        if result['state'] != 'complete':
+            self.hold(c, 'Codex '+result['state']+'; no retry; external termination review required')
+        else:
+            self.capture_synthetic(c, response, usage=result['usage'])
+        return result
 
     def validate_synthetic(self, c):
         """Trusted fresh-source reconstruction and fixed checks; no worker QA."""
