@@ -293,3 +293,13 @@ example is inert and disabled. The legacy Actions cron trigger is removed (manua
 dispatch remains). See the [operator setup, isolation limits and recovery guide](docs/SPRINT-6.6.md)
 and [offline evidence](docs/SPRINT-6.6-EVIDENCE.md). Same-UID filesystem permissions
 are not credential isolation; safe manual mode remains available.
+
+### Synthetic concurrency readiness (Sprint 6.7)
+
+A separate versioned coordinator provides durable task/slot claims, fencing,
+repository collision control, independent synthetic QA and per-task accounting.
+Three synthetic workers can be demonstrated offline; the live worker limit stays
+one and no live dispatcher is added. Configuration is disabled by default.
+Read-only local commands expose slots, queues, claims, results and recovery holds.
+See the [operator and isolation guide](docs/SPRINT-6.7.md) and
+[validation evidence](docs/SPRINT-6.7-EVIDENCE.md).
