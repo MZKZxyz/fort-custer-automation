@@ -1,0 +1,23 @@
+{
+  "schema": "canary-task-review-v1-not-an-approval",
+  "task_id": "freeze-direction-vectors-s610",
+  "review_state": "independent-operator-review-required",
+  "repository": "MZKZxyz/fort-custer-server",
+  "observed_main": "d82c272b47486161bf9f37508b69fe3240678655",
+  "issue": null,
+  "issue_requirement": "Select or create a matching issue; do not reuse issue 3 authorization",
+  "allowed": ["tools/maze-analyzer/solver.js", "test/analyzer.test.js"],
+  "instructions": "Freeze each exported maze direction vector. Add mutation rejection regressions for all four vectors and preserve maze generation, movement, invalid-direction and fire/item semantics. Change only the two allowed files. No authentication, database, deployment, controller, policy, credentials, commit, push, PR, merge or service access.",
+  "checks": [
+    {"name": "solver-syntax", "argv": ["node", "--check", "tools/maze-analyzer/solver.js"], "timeout_seconds": 30},
+    {"name": "test-syntax", "argv": ["node", "--check", "test/analyzer.test.js"], "timeout_seconds": 30},
+    {"name": "analyzer", "argv": ["node", "--test", "test/analyzer.test.js"], "timeout_seconds": 120}
+  ],
+  "trusted_qa_oracle": "infra/qa-assets/direction-vectors.mjs",
+  "qa_oracle_requirement": "Install from reviewed automation release outside candidate storage; required in addition to candidate tests",
+  "timeout_seconds": 600,
+  "usage_policy": "subscription-no-paid-refills",
+  "coding_authorization": false,
+  "live_activation": false,
+  "publication_authorization": false
+}

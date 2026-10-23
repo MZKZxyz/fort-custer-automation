@@ -311,6 +311,15 @@ class ProcessEndpoint:
 
 
 class TransportTests(unittest.TestCase):
+    def test_disconnect_during_half_close_is_protocol_failure(self):
+        from unittest.mock import Mock
+        import errno
+        sock = Mock()
+        sock.shutdown.side_effect = OSError(errno.ENOTCONN, 'early peer close')
+        with self.assertRaisesRegex(ValueError, 'Disconnected'):
+            t.finish_request(sock)
+        sock.shutdown.assert_called_once_with(socket.SHUT_WR)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name); self.root.chmod(0o700)

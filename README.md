@@ -348,3 +348,31 @@ python3 -m src.integration_control --policy POLICY --broker-config BROKER_CONFIG
 The readiness command always exits 1 and reports unverified external isolation,
 blocked legacy migration, zero live capacity and unsupported hard resource limits.
 No real Codex worker, application publication, merge or deployment is performed.
+
+## Sprint 6.10: single-worker activation preparation
+
+[Sprint 6.10](docs/SPRINT-6.10.md) adds complete source/candidate handoff bundles,
+an external QA client with distinct peer identities, durable synthetic subscription
+exhaustion/unknown holds, a read-only historical inventory and eight separate
+readiness prerequisites. The [Mac runbook](docs/LIVE-CANARY-RUNBOOK.md) identifies
+mandatory verification and exact stop points. The fresh canary
+[review template](examples/direction-vectors-task.review.json) is not an approval.
+
+**Software integration is incomplete; live activation remains blocked.**
+Safe personal-account authentication, authoritative live migration, external
+QA/VM receivers and publisher intake are still missing. There is no enable flag
+or receipt override. No account files are forwarded, no privileged infrastructure
+is installed, and no live Codex task or application publication is performed.
+See [test evidence and outstanding blockers](docs/SPRINT-6.10-EVIDENCE.md) and
+[credential/isolation requirements](docs/WORKER-ISOLATION.md).
+
+```sh
+python3 -m unittest discover -s tests -p test_activation_readiness.py -v
+python3 -m src.migration_inventory --policy POLICY --coordinator COORDINATOR_CONFIG --broker-config BROKER_CONFIG
+python3 -m src.integration_control --policy POLICY --broker-config BROKER_CONFIG
+```
+
+Both inspection commands intentionally exit 1; inventory cannot authorize
+activation or convert historical approvals. The
+[installation plan example](config/single-worker-activation.example.json)
+is disabled and is not runtime activation configuration.
