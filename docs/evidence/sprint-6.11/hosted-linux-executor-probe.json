@@ -1,0 +1,31 @@
+{
+  "approved_write": false,
+  "cli_version": "0.163.0",
+  "enforcement": "unverified-positive-control-failed",
+  "explicit_sandbox_denials": null,
+  "explicit_sandbox_positive_read": false,
+  "inference": false,
+  "limitations": [
+    "not-model-tool-routing-proof",
+    "not-cross-user-or-VM-proof",
+    "not-network-resource-or-descendant-termination-proof"
+  ],
+  "live_ready": false,
+  "omitted_sandbox_reads_controller_sentinel": true,
+  "platform_sandbox_state": "unavailable",
+  "same_uid_auth_readable": true,
+  "same_uid_process_auth_readable": true,
+  "sandbox_setup_detail": "fs sandbox helper failed with status exit status: 101: bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted\n\nthread 'main' (6840) panicked at linux-sandbox/src/linux_run_main.rs:1273:21:\nfailed to inspect synthetic bubblewrap mount target <fixture>/workspace/allowed.txt/.aws: Not a directory (os error 20)\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+  "sandbox_setup_failure": "positive-control-failed",
+  "schema": "codex-boundary-probe-v1",
+  "synthetic_only": true,
+  "transport": "actual-official-exec-server-stdio",
+  "unapproved_write_denied": null,
+  "unknown_rpc_rejected": true,
+  "observation": {
+    "commit": "cd441310fd5fc579a87e2fc8aca712767e49412f",
+    "run": 39919153248,
+    "job": 120299896523,
+    "platform": "ubuntu-latest"
+  }
+}

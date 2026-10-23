@@ -31,6 +31,15 @@ The real offline probe reproduces that read with synthetic controller policy
 and authentication sentinels. Unknown RPC rejection is protocol validation,
 not a permission check for a known powerful RPC.
 
+There is also a concrete pinned-runtime sandbox blocker in the tested profile:
+hosted Ubuntu's helper fails its permitted-file control with a loopback
+`Operation not permitted` error and a panic while inspecting
+`allowed.txt/.aws` (`Not a directory`). The nested cloud instead fails the
+protected daemon-directory prerequisite. Neither environment demonstrates the
+requested exact-file write profile. The diagnostic retains these observations;
+it never converts setup failures into successful denied-access tests. These
+findings concern the tested profile/platforms, not every possible VM sandbox.
+
 **Blocking invariant:** this release cannot establish that every executable
 capability crosses an immutable broker-controlled boundary, with no trusted-host
 fallback. No documented stable universal interception contract was established
