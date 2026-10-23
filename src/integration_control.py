@@ -22,7 +22,7 @@ def block_live_dispatch():
     raise ValueError(PROTOCOL + ': ' + '; '.join(BLOCKERS))
 
 
-def health(policy_path, coordinator_path=None, now=None):
+def health(policy_path, coordinator_path=None, now=None, *, broker_path=None, broker_config=None):
     """Never initializes a ledger, loads secrets, invokes a worker or authenticates."""
     now = time.time() if now is None else now
     report = dict(schema=PROTOCOL, live_ready=False, live_dispatch=False,
@@ -78,6 +78,29 @@ def health(policy_path, coordinator_path=None, now=None):
         except Exception:
             checks['coordinator'] = 'unknown-or-contradictory'
             report['blockers'].append('Coordinator evidence verification failed')
+    checks.update(broker_schema='not-supplied', atomic_claim_authority='blocked-not-migrated',
+                  legacy_path_migration='blocked-not-migrated', worker_peer_authentication='not-provisioned',
+                  filesystem_isolation_evidence='not-verified', qa_isolation='not-verified',
+                  publisher_separation='not-verified', live_worker_capacity=0)
+    from src.worker_transport import sys as transport_platform
+    checks['worker_peer_authentication'] = ('kernel-api-available-endpoint-unverified' if
+        transport_platform.platform.startswith('linux') or transport_platform.platform == 'darwin'
+        else 'unsupported-platform')
+    report['unsupported_resource_controls'] = ['hard_cpu', 'hard_memory', 'hard_disk', 'network_egress']
+    if broker_path is not None:
+        try:
+            from src.grant_broker import Broker
+            e.require(broker_config is not None and
+                      Path(broker_config['ledger']).absolute() == Path(broker_path).absolute(),
+                      'Explicit matching broker configuration required')
+            view = Broker(broker_config, lambda:now).inspect()
+            report['broker'] = {k:v for k,v in view.items() if k != 'tasks'}
+            checks['broker_schema'] = view['schema']
+            checks['atomic_claim_authority'] = view['atomic_authority']
+            if view['stop']: checks['stop'] = 'active'
+        except Exception:
+            checks['broker_schema'] = 'unknown-or-contradictory'
+            report['blockers'].append('Broker integrity/configuration verification failed')
     return report
 
 
@@ -85,8 +108,18 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--policy', required=True)
     parser.add_argument('--coordinator')
+    parser.add_argument('--broker-config')
     args = parser.parse_args(argv)
-    print(json.dumps(health(args.policy, args.coordinator), sort_keys=True, indent=2))
+    config = None
+    if args.broker_config:
+        try:
+            config = e.decode(e.regular(args.broker_config).read_bytes())
+            e.require(isinstance(config, dict) and isinstance(config.get('ledger'), str),
+                      'Invalid broker configuration')
+        except Exception: config = {'ledger': '/invalid-broker-configuration'}
+    print(json.dumps(health(args.policy, args.coordinator,
+                           broker_path=config['ledger'] if config else None,
+                           broker_config=config), sort_keys=True, indent=2))
     return 1  # Intentionally blocked until a reviewed implementation replaces v2.
 
 

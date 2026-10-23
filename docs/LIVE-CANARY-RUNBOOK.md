@@ -1,11 +1,39 @@
 # One manually initiated development canary — preparation only
 
-**STOP: Sprint 6.8 cannot execute this canary.** The shared grant broker,
-credential-free model transport, external worker/QA isolation and publisher
-identity have not been implemented/verified. The health command always exits 1.
+**STOP: Sprint 6.9 still cannot execute this canary.** A synthetic single-ledger broker and bounded local peer transport now exist.
+Live broker migration, a credential-free model bridge, external worker/QA
+isolation and publisher identity remain unimplemented/unverified. The health command always exits 1.
 Do not remove the gate, mock it, use an older checkout, or approve speculative
 coding to work around it. This runbook prepares a later independently reviewed
 activation; it does not authorize it. No real task was executed for this sprint.
+
+## Sprint 6.9 preparation and recovery
+
+Read [the broker state/authority design](SPRINT-6.9.md) and
+[the macOS provisioning profile](WORKER-ISOLATION.md). Synthetic grants are not
+live grants and cannot be imported into old execution/publication ledgers.
+The old controller and coordinator are not atomically migrated across databases.
+Do not use a second broker ledger to evade an active/ambiguous claim.
+
+Run read-only health with an explicitly protected synthetic configuration:
+
+```sh
+python3 -m src.integration_control --policy POLICY --coordinator COORDINATOR_CONFIG --broker-config BROKER_CONFIG
+```
+
+Exit 1 is required. Check the broker integrity, active/ambiguous counts, STOP,
+legacy migration status, actual live capacity zero, unverified worker/QA/publisher
+isolation and unsupported resource ceilings. Endpoint API availability is not
+endpoint or filesystem readiness. The disabled example must remain synthetic.
+There is no operational live broker command in this release.
+
+For synthetic failure inspection use the trusted `Broker.inspect`, `hold` and
+`sweep` APIs described in Sprint 6.9. A lost reply, `starting`, `checking`, STOP,
+expiry or unconfirmed termination must keep the only slot occupied. Independently
+terminate the endpoint/guest/descendants before operator recovery with retained
+termination-evidence digest and exact challenge. Recovery permanently interrupts
+the identity and never launches a replacement. Do not retry startup, transfer or
+uncertain QA. Retain wire bytes, audit history and watchdog evidence.
 
 ## Suggested task and source evidence
 

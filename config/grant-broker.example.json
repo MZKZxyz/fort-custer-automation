@@ -1,0 +1,13 @@
+{
+  "schema": "grant-broker-v1-synthetic",
+  "enabled": false,
+  "mode": "synthetic-only",
+  "slots": 1,
+  "live_limit": 1,
+  "ledger": "/Users/fc-controller/control/synthetic-broker.sqlite",
+  "scratch": "/Users/fc-controller/synthetic-scratch",
+  "stop_files": ["/Users/fc-controller/control/state/STOP"],
+  "max_tasks": 100,
+  "max_artifact_bytes": 1048576,
+  "max_storage_bytes": 16777216
+}
