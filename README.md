@@ -392,3 +392,10 @@ text connectivity test. [Sprint scope](docs/SPRINT-6.12.md) and
 [evidence](docs/SPRINT-6.12-EVIDENCE.md) record the exact tests and remaining blockers.
 `python3 -m src.api_controller readiness` is read-only and requires no key.
 Live coding remains disabled; no real API calls occur in tests or CI.
+
+## Sprint 6.13A: offline observation planning
+
+The [observation planning architecture and runbook](docs/OBSERVATION-PLANNING.md)
+describe the synthetic-only broker adapter, versioned classification schema,
+trusted provenance, durable accounting and requirements for independently
+authorizing future live planning. Live broker-to-API dispatch remains disabled.
