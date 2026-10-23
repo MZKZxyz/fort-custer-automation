@@ -113,3 +113,38 @@ skips. The new targeted suite also passes optimized: **23 tests**, zero skips,
 **5.437 seconds**; infrastructure lint/compileall pass. This supersedes the
 sandbox-restricted regression result for functional verification while retaining
 that environment observation above.
+
+### Final code checkpoint
+
+At code tree `6bd53ab937fa712c24ba86e1441a8f7939c9bd5a` (draft PR code commit
+`d994119964d9ec496493d8aaad3de66b64d7f86f`), the final targeted normal suite
+passes **23/23**, zero skips, **3.748 seconds**. The full socket-enabled optimized
+suite passes **512 tests**, zero failures/errors, **2 expected skips**,
+**130.224 seconds**. Final local `git write-tree` matches the uploaded code tree
+exactly. Documentation-only follow-up evidence does not change the tested code.
+
+## Hosted Linux and macOS verification
+
+At `d994119964d9ec496493d8aaad3de66b64d7f86f`, the complete
+[broker workflow run 39926312477](https://github.com/MZKZxyz/fort-custer-automation/actions/runs/39926312477)
+passed on both platforms. Decoded job logs establish:
+
+| Check | Ubuntu job 120323451294 | macOS job 120323450907 |
+| --- | --- | --- |
+| New API suite, normal | 23 pass, 6.299 s | 23 pass, 39.487 s |
+| New API suite, optimized | 23 pass, 4.580 s | 23 pass, 32.603 s |
+| Existing broker/transport | 31 pass, 6.636 s | 31 pass, 51.276 s |
+| Existing activation | 19 pass, 4.175 s | 19 pass, 37.032 s |
+| Existing activation optimized | 19 pass, 4.188 s | 19 pass, 26.942 s |
+| Official executor diagnostics | 6 pass, 0.358 s | 6 pass, 1.707 s |
+| Synthetic subprocess source/QA transfer | pass | pass |
+| Full regression | 512 tests, pass, 2 expected skips, 145.953 s | intentionally Linux-only |
+
+All targeted suites have zero skips. The official diagnostic still reports no
+inference and no live readiness. Its Mac filesystem positive controls and five
+sentinel denials pass; its Linux sandbox positive controls fail and are reported
+as unavailable, never credited as OS isolation. This is unchanged scoped
+Sprint 6.11 evidence, not proof of complete API tool mediation or target deployment.
+Execution simulation and Verify planner dry run also passed at this checkpoint.
+The remaining full infrastructure/activation/rehearsal workflows were still
+running when these job logs were collected; no result is inferred for them here.
