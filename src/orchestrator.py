@@ -108,6 +108,10 @@ def record_report(db_path, report, timezone):
 
 
 def main():
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] in {'init','sync','queue','inspect','status','report','preview'}:
+        from src.task_orchestration import main as operational_main
+        return operational_main(sys.argv[1:])
     p = argparse.ArgumentParser()
     p.add_argument('--initialize-state', action='store_true', help='Explicitly bootstrap a NEW ledger')
     p.add_argument('--source', choices=['sample', 'github'], default='sample')
