@@ -27,6 +27,8 @@ jobs:
           node-version: '22'
       - name: Offline API reservations, transport and hostile tool contracts
         run: |
+          python -m unittest discover -s tests -p test_live_observation.py -v
+          python -O -m unittest discover -s tests -p test_live_observation.py -q
           python -m unittest discover -s tests -p test_observation_planning.py -v
           python -O -m unittest discover -s tests -p test_observation_planning.py -q
           python -m unittest discover -s tests -p test_api_controller.py -v

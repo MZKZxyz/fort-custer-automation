@@ -1,5 +1,9 @@
 # Broker-bound observation planning (Sprint 6.13A)
 
+The historical synthetic interface below remains available. Sprint 6.13B adds
+a separate [supervised live interface and authorization](LIVE-OBSERVATION.md);
+coding grants alone still cannot authorize inference.
+
 This interface is offline and synthetic only. It cannot edit files, run tools,
 approve a task, publish a PR, or dispatch a live model request. The operator-only
 connectivity command and its output-isolation contract are unchanged.
