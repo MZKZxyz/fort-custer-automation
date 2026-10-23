@@ -1,0 +1,15 @@
+{
+  "schema": "task-orchestration-v1",
+  "ledger": "/operator/orchestration/orchestration.sqlite",
+  "policy": "/operator/controller/catalog-policy.json",
+  "discovery": "/operator/evidence/discovery.sqlite",
+  "promotion": "/operator/promotion/promotion.sqlite",
+  "execution": "/operator/controller/catalog-state/local.sqlite",
+  "stop_files": ["/operator/discovery/STOP", "/operator/controller/catalog-state/STOP"],
+  "planning": {
+    "future_capacity": 3,
+    "max_active_workers": 1,
+    "max_recommendations": 10,
+    "tasks": {}
+  }
+}

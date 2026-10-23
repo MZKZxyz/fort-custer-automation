@@ -270,3 +270,13 @@ second terminal review and installs through a locked, conflict-checked atomic
 replacement. High-risk work is escalated; no coding or publication approval is
 granted. See the [operator workflow and security limits](docs/SPRINT-6.4.md) and
 [offline validation evidence](docs/SPRINT-6.4-EVIDENCE.md).
+
+### Read-only task orchestration (Sprint 6.5)
+
+`python3 -m src.orchestrator` now accepts explicit `init`, `sync`, `queue`,
+`inspect`, `status`, `report`, and `preview` subcommands with `--config` pointing
+to a protected copy of `config/orchestration.example.json`. A separate versioned
+ledger retains evidence references and reproducible operator review queues.
+Planning is advisory, keeps the active worker ceiling at one, and grants no
+coding or publication approval. See the [operator guide](docs/SPRINT-6.5.md) and
+[offline test evidence and limitations](docs/SPRINT-6.5-EVIDENCE.md).
