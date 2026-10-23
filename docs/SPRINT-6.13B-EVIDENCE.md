@@ -41,7 +41,11 @@ The broker workflow now explicitly runs `test_live_observation.py` in normal and
 optimized Python on Linux/macOS. Existing full-suite workflows discover these
 tests automatically. Exact hosted run URLs and outcomes are recorded in the draft
 PR description after push; local results do not imply a hosted workflow passed.
-No workflow is dispatched manually and no operational canary is run in CI.
+The first hosted canary run passed both 617-test suites and uploaded its artifact,
+but GitHub marked it cancelled near the existing five-minute job limit. The
+workflow timeout is now ten minutes to cover both expanded full suites and
+artifact cleanup; no inference/runtime timeout changed. No operational canary
+is run in CI.
 
 ## Remaining limits
 
