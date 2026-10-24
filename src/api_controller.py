@@ -303,13 +303,17 @@ def _metadata(r, request):
             _schema(e.canonical(r[name]) == e.canonical(expected), 'metadata','unsupported_configuration')
     _schema(r.get('background') is None or r['background'] is False, 'metadata','unsupported_configuration')
     _schema(r.get('service_tier') in (None,'default'), 'metadata','service_tier')
-    _schema(r.get('prompt_cache_retention') is None or request['model'] == MODEL and
+    from src.coding_api import MODEL as CODING_MODEL, payload as coding_payload
+    coding_profile = (request.get('model') == CODING_MODEL and
+                      request == coding_payload(request.get('input')))
+    _schema(r.get('prompt_cache_retention') is None or
+            (request['model'] == MODEL or coding_profile) and
             r['prompt_cache_retention'] == 'in_memory', 'metadata','cache_policy')
     # Nonempty state/access/new-model cache settings require a separate review.
     for name in ('conversation','previous_response_id','prompt','access_programs','moderation'):
         _schema(r.get(name) is None, 'metadata','unsupported_configuration')
     cache_options = r.get('prompt_cache_options')
-    _schema(cache_options is None or request['model'] != MODEL and
+    _schema(cache_options is None or coding_profile and
             cache_options == {'mode':'implicit', 'ttl':'30m'}, 'metadata','unsupported_configuration')
     _schema(r.get('truncation') in (None,'disabled'), 'metadata','unsupported_configuration')
     meta = r.get('metadata')
