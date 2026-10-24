@@ -58,7 +58,8 @@ class LocalRunnerTests(unittest.TestCase):
         gate = patch('src.integration_control.block_live_dispatch')
         gate.start(); self.addCleanup(gate.stop)
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        # Canonicalize only our newly created fixture root (macOS /var is a symlink).
+        self.root = Path(self.tmp.name).resolve(strict=True)
         source = self.root/'source'; source.mkdir()
         (source/'tools/maze-analyzer').mkdir(parents=True); (source/'test').mkdir()
         (source/'package.json').write_text('{"type":"module"}')

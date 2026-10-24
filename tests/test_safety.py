@@ -88,7 +88,7 @@ class Safety(unittest.TestCase):
 
     def test_missing_and_corrupt_state_fail_closed(self):
         with tempfile.TemporaryDirectory() as directory:
-            db = Path(directory) / 'db'
+            db = Path(directory).resolve(strict=True) / 'db'
             with self.assertRaises(sqlite3.OperationalError):
                 plan(db, self.settings, [], self.now)
             self.assertFalse(db.exists())
@@ -99,7 +99,7 @@ class Safety(unittest.TestCase):
     def test_reservations_survive_days_and_ledger_mismatch(self):
         tasks = self.ingest([self.issue])
         with tempfile.TemporaryDirectory() as directory:
-            db = Path(directory) / 'db'
+            db = Path(directory).resolve(strict=True) / 'db'
             initialize(db)
             plan(db, self.settings, tasks, self.now)
             later = plan(db, self.settings, tasks, self.now + timedelta(days=1))
@@ -115,7 +115,7 @@ class Safety(unittest.TestCase):
 
     def test_concurrent_different_plans_only_one_commits(self):
         with tempfile.TemporaryDirectory() as directory:
-            db = Path(directory) / 'db'
+            db = Path(directory).resolve(strict=True) / 'db'
             initialize(db)
             tasks = self.ingest([self.issue])
             def attempt(backlog):
@@ -149,14 +149,14 @@ class Safety(unittest.TestCase):
             def request(*args):
                 raise HTTPError('url', status, 'denied', {}, None)
             with tempfile.TemporaryDirectory() as directory:
-                db = Path(directory) / 'db'
+                db = Path(directory).resolve(strict=True) / 'db'
                 with self.assertRaises(ValueError):
                     restore(db, 'owner/repo', 'test', request=request)
                 self.assertFalse(db.exists())
 
     def test_remote_compare_and_swap_failure_propagates(self):
         with tempfile.TemporaryDirectory() as directory:
-            db = Path(directory) / 'db'
+            db = Path(directory).resolve(strict=True) / 'db'
             initialize(db)
             def request(method, path, token, payload):
                 self.assertEqual(method, 'PUT')
@@ -191,7 +191,7 @@ class RemoteRoundTrip(unittest.TestCase):
                 return {}
             raise AssertionError('Unexpected operation')
         with tempfile.TemporaryDirectory() as directory:
-            first, second, third = [Path(directory) / name for name in ('one', 'two', 'three')]
+            first, second, third = [Path(directory).resolve(strict=True) / name for name in ('one', 'two', 'three')]
             self.assertIsNone(restore(first, 'owner/repo', 'test', True, 'base', request))
             save(first, 'owner/repo', 'test', None, request)
             sha = restore(second, 'owner/repo', 'test', request=request)

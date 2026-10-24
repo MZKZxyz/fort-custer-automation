@@ -16,7 +16,7 @@ from test_grant_broker import Fixture
 class AdmissionTests(unittest.TestCase):
     def test_unknown_cli_version_rejected_before_executor_start(self):
         with tempfile.TemporaryDirectory() as root:
-            binary = Path(root)/'codex'; binary.touch()
+            binary = Path(root).resolve(strict=True)/'codex'; binary.touch()
             result = subprocess.CompletedProcess([], 0, stdout=b'codex-cli 0.164.0\n')
             with patch('subprocess.run', return_value=result), \
                  patch('subprocess.Popen', side_effect=AssertionError('unreviewed executor')):

@@ -44,7 +44,7 @@ class Sprint51(unittest.TestCase):
 
     def test_daily_persistence_and_conflict(self):
         with tempfile.TemporaryDirectory() as directory:
-            db = Path(directory) / 'plans.db'
+            db = Path(directory).resolve(strict=True) / 'plans.db'
             initialize(db)
             now = datetime(2026, 10, 22, 12, tzinfo=timezone.utc)
             first = plan(db, self.settings, self.backlog, now)
@@ -78,7 +78,7 @@ class Sprint51(unittest.TestCase):
     def test_concurrent_planners_share_daily_plan(self):
         from concurrent.futures import ThreadPoolExecutor
         with tempfile.TemporaryDirectory() as directory:
-            db = Path(directory) / 'plans.db'
+            db = Path(directory).resolve(strict=True) / 'plans.db'
             initialize(db)
             now = datetime(2026, 10, 22, 12, tzinfo=timezone.utc)
             with ThreadPoolExecutor(max_workers=3) as pool:

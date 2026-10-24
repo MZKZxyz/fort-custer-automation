@@ -24,7 +24,7 @@ from metering import parse_events, estimate, verify_authoritative_billing
 class Sprint53Tests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
-        self.root=Path(self.tmp.name); self.db=self.root/'state.db'; initialize(self.db)
+        self.root=Path(self.tmp.name).resolve(strict=True); self.db=self.root/'state.db'; initialize(self.db)
         self.now=1792670400; self.issuer=SyntheticIssuer()
         self.ledger=Ledger(self.db,self.issuer.verifier,lambda:self.now,{'synthetic/server'},synthetic=True)
         self.source,self.base=fixture(self.root)
