@@ -15,7 +15,7 @@ from test_grant_broker import Fixture
 
 def output(text=None, **changes):
     if text is None:
-        text = e.canonical(dict(schema=p.SCHEMA, disposition='ready_for_review', reason_code='review_required'))
+        text = e.canonical(dict(schema=p.SCHEMA, disposition='ready_for_review'))
     return response(output=[dict(type='message', role='assistant', status='completed',
         content=[dict(type='output_text', text=text, annotations=[])])], **changes)
 
@@ -56,14 +56,21 @@ class PlanningTests(unittest.TestCase):
         request = self.fake.body
         self.assertLessEqual(len(request['input'].encode()), c.MAX_INPUT_BYTES)
         self.assertEqual(request['tools'], [])
+        policy = e.decode(request['input'])['policy']
+        self.assertEqual(policy['dispositions'], sorted(p.REASONS))
+        self.assertIn('Return exactly schema and disposition.', policy['instruction'])
+        self.assertNotIn('reason_code', e.canonical(policy))
         self.assertEqual(e.decode(request['input'])['untrusted_task'], a['spec']['task'])
         self.assertNotIn(self.claim['token'], request['input'])
         self.assertFalse(hasattr(decision, 'approved'))
 
     def test_all_four_dispositions(self):
-        for disposition, reasons in p.REASONS.items():
-            raw = output(e.canonical(dict(schema=p.SCHEMA, disposition=disposition, reason_code=next(iter(reasons)))))
-            self.assertEqual(p._classification(raw).disposition, disposition)
+        for disposition, reason in {
+            'ready_for_review': 'review_required', 'insufficient_context': 'missing_context',
+            'policy_blocked': 'policy_constraint', 'no_change_recommended': 'no_change_needed',
+        }.items():
+            raw = output(e.canonical(dict(schema=p.SCHEMA, disposition=disposition)))
+            self.assertEqual(p._classification(raw), p.Classification(disposition, reason))
 
     def test_provenance_tampering_and_changed_claim(self):
         decision = self.observe()
@@ -147,13 +154,15 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(self.fake.calls, 1)
 
     def test_adversarial_outputs_have_no_side_effects_or_persistence(self):
-        valid = dict(schema=p.SCHEMA, disposition='ready_for_review', reason_code='review_required')
+        valid = dict(schema=p.SCHEMA, disposition='ready_for_review')
         marker = 'UNTRUSTED_PRIVATE_MARKER'
         texts = ['not json', '[]', 'null', 'NaN', '{}', 'x'*257,
                  '{"schema":"observation-decision-v1","schema":"observation-decision-v1"}',
                  e.canonical(dict(valid, disposition='execute')),
                  e.canonical(dict(valid, disposition=[])),
                  e.canonical(dict(valid, reason_code=True)),
+                 e.canonical(dict(valid, reason_code='review_required')),
+                 e.canonical(dict(valid, reason_code='policy_blocked')),
                  e.canonical(dict(valid, reason_code='missing_context')),
                  e.canonical(dict(valid, schema='v2'))]
         for key in ('approval', 'approved', 'command', 'patch', 'files', 'url', 'tool_arguments',

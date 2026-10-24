@@ -11,7 +11,7 @@ from src import orchestration_evidence as e
 from src import api_controller as api
 from src.grant_broker import Broker, PROTOCOL as SYNTHETIC
 from src.concurrency_coordinator import authorization, stopped
-from src.observation_planning import Planner, Decision, SCHEMA, observation_prompt
+from src.observation_planning import Planner, Decision, SCHEMA, observation_prompt, _legacy_observation_prompt
 from src.local_runner import terminal_challenge
 from src.observation_diagnostics import diagnostic, validate as validate_diagnostic
 
@@ -46,7 +46,8 @@ class ObservationBroker(Broker):
                       e.finite(a['approved_at']) and e.finite(a['expires']) and
                       a['approved_at'] < a['expires'] <= min(a['approved_at']+900, a['reviewed']['expires']) and
                       a['model'] == api.MODEL and a['pricing'] == api.DEFAULT_PRICING and
-                      a['prompt_digest'] == e.digest(observation_prompt(a['reviewed'])) and
+                      a['prompt_digest'] in {e.digest(observation_prompt(a['reviewed'])),
+                                             e.digest(_legacy_observation_prompt(a['reviewed']))} and
                       a['source_manifest'] == a['reviewed']['source_manifest'] and
                       a['maximum_nano_usd'] == api.maximum_charge(a['pricing'], api.OBSERVATION_OUTPUT),
                       'Invalid observation authorization')

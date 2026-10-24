@@ -12,13 +12,14 @@ connectivity command and its output-isolation contract are unchanged.
 
 `src/observation_planning.py` defines frozen, runtime-validated `Classification`,
 `Provenance`, and `Decision` types. The schema is `observation-decision-v1`.
-The entire model-authored JSON object must contain exactly these three fields:
+The entire model-authored JSON object must contain exactly these two fields:
 
 ```json
-{"schema":"observation-decision-v1","disposition":"ready_for_review","reason_code":"review_required"}
+{"schema":"observation-decision-v1","disposition":"ready_for_review"}
 ```
 
-The only supported pairs are:
+Trusted controller code derives the reason code; the external `Decision` and
+`Classification` retain their original structure and schema. The mappings are:
 
 | Disposition | Reason code |
 | --- | --- |
@@ -27,9 +28,10 @@ The only supported pairs are:
 | `policy_blocked` | `policy_constraint` |
 | `no_change_recommended` | `no_change_needed` |
 
+The old three-field model response is rejected, even when its pair is consistent.
 The model may emit no other field, prose, URL, patch, file content, command,
 tool argument, approval state, provenance or publication instruction. Unknown
-fields, duplicate JSON keys, invalid types, unsupported versions/pairs,
+fields, duplicate JSON keys, invalid types, unsupported versions/dispositions,
 incomplete/refused/fragmented responses and classifications over 256 UTF-8 bytes
 are rejected. Existing controller validation rejects tool calls and unsupported
 modalities before this parser is reached. Reasoning is validated and discarded.
