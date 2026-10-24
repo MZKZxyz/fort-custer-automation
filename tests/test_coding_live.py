@@ -73,6 +73,8 @@ class CodingTests(unittest.TestCase):
         return canary.run(self.broker, claim, 'operator', self.controller)
 
     def test_real_edit_complete_offline_path(self):
+        self.transport.raw = fixtures.envelope(prompt_cache_retention='in_memory',
+            prompt_cache_options={'mode':'implicit','ttl':'30m'})
         before = (Path(self.f.config['state'])/'local.sqlite').read_bytes()
         claim = self.authorize(); result = self.run_canary(claim)
         self.assertEqual(result['comment_regression'], 'executable-bytes-identical')
@@ -104,6 +106,31 @@ class CodingTests(unittest.TestCase):
         self.assertEqual(self.broker.inspect()['tasks'][claim['execution']]['terminal_failure']['phase'],
                          'response_validation')
         with self.assertRaises(ValueError): self.run_canary(claim)
+        self.assertEqual(len(self.transport.calls), 1)
+
+    def test_cache_schema_failure_never_reaches_patch_or_second_grant(self):
+        claim = self.authorize()
+        self.transport.raw = fixtures.envelope(prompt_cache_retention='24h')
+        with patch('src.coding_contract.apply', side_effect=AssertionError('No patch permitted')):
+            with self.assertRaises(ValueError): self.run_canary(claim)
+        row = self.broker.inspect()['tasks'][claim['execution']]
+        self.assertNotEqual(row['state'], 'validated')
+        self.assertEqual(row['terminal_failure']['phase'], 'response_validation')
+        self.assertEqual(self.budget.status()['unresolved_nano_usd'], profile.MAXIMUM_CHARGE)
+        with self.assertRaises(ValueError): self.run_canary(claim)
+        with self.assertRaises(ValueError): self.authorize()
+        self.assertEqual(len(self.transport.calls), 1)
+
+    def test_incomplete_compatible_response_never_reaches_patch(self):
+        claim = self.authorize()
+        self.transport.raw = fixtures.envelope(status='incomplete',
+            incomplete_details={'reason':'max_output_tokens'}, prompt_cache_retention='in_memory',
+            prompt_cache_options={'mode':'implicit','ttl':'30m'})
+        with patch('src.coding_contract.apply', side_effect=AssertionError('No patch permitted')):
+            with self.assertRaises(ValueError): self.run_canary(claim)
+        self.assertNotEqual(self.broker.inspect()['tasks'][claim['execution']]['state'], 'validated')
+        self.assertEqual(self.budget.status()['unresolved_requests'], 0)
+        with self.assertRaises(ValueError): self.authorize()
         self.assertEqual(len(self.transport.calls), 1)
 
     def test_invalid_edit_is_billed_but_never_applied(self):

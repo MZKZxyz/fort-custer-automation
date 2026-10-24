@@ -11,6 +11,35 @@ from src.api_budget import Budget
 
 
 class ProfileTests(unittest.TestCase):
+    def test_sol_cache_metadata_compatibility(self):
+        request = profile.payload('test')
+        for retention in (None, 'in_memory'):
+            for options in (None, {'mode':'implicit', 'ttl':'30m'}):
+                with self.subTest(retention=retention, options=options):
+                    result = api.receipt(fixtures.envelope(prompt_cache_retention=retention,
+                        prompt_cache_options=options), request, profile.PRICING)
+                    self.assertEqual(result['estimated_cost_nano_usd'], 1464000)
+                    self.assertEqual(result['status'], 'completed')
+
+    def test_unsupported_cache_and_metadata_remain_rejected(self):
+        cases = [('prompt_cache_retention', value) for value in
+                 ('24h','30m','12h','implicit','',False,{},[])]
+        cases += [('prompt_cache_options', value) for value in
+                  ({}, {'mode':'explicit','ttl':'30m'}, {'mode':'implicit','ttl':'12h'},
+                   {'mode':'implicit','ttl':'30m','comparison_response_id':'other'},
+                   {'mode':'implicit'}, '30m', [])]
+        cases += [('store',True), ('tools',[{'type':'function'}]),
+                  ('metadata',{'key':1}), ('service_tier','priority')]
+        for key, value in cases:
+            with self.subTest(key=key, value=value), self.assertRaises(api.APIUnavailable):
+                api.receipt(fixtures.envelope(**{key:value}), profile.payload('test'), profile.PRICING)
+
+    def test_cache_compatibility_requires_exact_sol_profile(self):
+        for request in (api.payload('test'), dict(profile.payload('test'), store=True),
+                        dict(profile.payload('test'), model='other')):
+            with self.subTest(request=request), self.assertRaises(api.APIUnavailable):
+                api._metadata({'prompt_cache_options':{'mode':'implicit','ttl':'30m'}}, request)
+
     def test_new_catalog_profile_cannot_reinterpret_subscription_grants(self):
         from src import coding_contract as contract
         entry = json.loads((Path(__file__).parents[1]/'config/coding-task.example.json').read_text())['catalog']['tasks']['sol-low-compile-comment']
