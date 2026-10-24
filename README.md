@@ -406,3 +406,10 @@ The [Mac observation runbook](docs/LIVE-OBSERVATION.md) describes a separate,
 interactive, single-use observation grant and the production Responses integration.
 It is disabled by default and has no coding, QA or publication receiver.
 No live inference is run during implementation or CI.
+
+## Sprint 6.13C: separate catalog activation
+
+The [existing-Mac catalog activation runbook](docs/CATALOG-ACTIVATION.md) establishes
+one independently reviewed task in separate state without migrating legacy policy
+or approvals. Its read-only helper checks prerequisites before ledger creation;
+installation stops at Sprint 6.13B observation review, with no inference or coding.
