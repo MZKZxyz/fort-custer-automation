@@ -145,7 +145,10 @@ class Budget:
             "SELECT evidence FROM events WHERE kind='coding_authority_bound'")]
         e.require(authorities == [dict(authority=authority)], 'Bound coding authority required')
         row = db.execute('SELECT * FROM requests WHERE id=?', (ident,)).fetchone()
-        if row is None: return None
+        if row is None:
+            e.require(not db.execute('SELECT 1 FROM events WHERE request=? LIMIT 1',(ident,)).fetchone(),
+                      'Orphan accounting evidence is indeterminate; never infer no dispatch')
+            return None
         history = [dict(r) for r in db.execute('SELECT * FROM events WHERE request=? ORDER BY seq',(ident,))]
         reservations = [e.decode(r['evidence']) for r in history if r['kind'] == 'reserved']
         e.require(len(reservations) == 1, 'Original reservation evidence required')

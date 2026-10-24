@@ -44,6 +44,8 @@ class EvidenceTests(unittest.TestCase):
             self.assertNotIn('usage',result)
             self.assertEqual(budget.status()['unresolved_requests'],0)
             with self.assertRaises(ValueError): budget.record_dispatch('b'*32)
+            with budget.tx(True) as db: budget.event(db,'reserved','9'*32,{'offline':'orphan fixture'})
+            with self.assertRaises(ValueError): budget.release_undispatched('9'*32,'a'*64,'e'*32,'f'*64)
             # An old record lacking v4 provenance is not evidence of no dispatch.
             budget.reserve('d'*32,'c'*64,100)
             with self.assertRaises(ValueError): budget.release_undispatched('d'*32,'a'*64,'e'*32,'f'*64)
