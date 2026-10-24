@@ -1,0 +1,17 @@
+{
+  "schema": "grant-broker-v3-live-coding",
+  "enabled": false,
+  "slots": 1,
+  "live_limit": 1,
+  "mode": "coding-only",
+  "ledger": "/absolute/new-coding/coding.sqlite",
+  "scratch": "/absolute/coding-qa-scratch",
+  "stop_files": [
+    "/absolute/catalog/state/STOP",
+    "/absolute/legacy/state/STOP"
+  ],
+  "max_tasks": 1,
+  "max_artifact_bytes": 1048576,
+  "max_storage_bytes": 16777216,
+  "api_config": "/absolute/private/coding-api.json"
+}

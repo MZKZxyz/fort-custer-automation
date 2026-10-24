@@ -1,0 +1,17 @@
+{
+  "schema": "responses-controller-v1",
+  "connectivity_enabled": false,
+  "credential_file": "/absolute/private/api-key",
+  "budget_file": "/absolute/existing/api-budget.sqlite",
+  "timezone": "America/Los_Angeles",
+  "daily_nano_usd": 10000000000,
+  "lifetime_nano_usd": 100000000000,
+  "pricing": {
+    "version": "sol-standard-global-2026-10-23-v1",
+    "model": "gpt-6.1-sol",
+    "input_nano_usd_per_token": 2000,
+    "cached_nano_usd_per_token": 100,
+    "output_nano_usd_per_token": 10000,
+    "cache_write_nano_usd_per_token": 2500
+  }
+}

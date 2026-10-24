@@ -11,8 +11,26 @@ from src.local_runner import manifest
 
 SCHEMA = 'coding-compile-comment-v1'
 FILE = 'tools/maze-analyzer/solver.js'
+SOURCE = 'c4f480abb309a7a4d141b20ab462552a868ef0e3'
+INSTRUCTIONS = ('Add one explanatory comment above compile describing its existing behavior. '
+                'Preserve all executable code and behavior.')
+USAGE_POLICY = 'supervised-sol-low-one-request'
+SPEND_CENTS = 531
 MAXIMUM = 16384
 ANCHOR = re.compile(r'(?m)^[ \t]*(?:export )?function compile\(')
+
+
+def catalog_task(entry):
+    e.require(entry['source'] == SOURCE and entry['repo'] == 'fort-custer-server' and
+              entry['repository'] == 'MZKZxyz/fort-custer-server' and
+              entry['allowed'] == [FILE] and entry['instructions'] == INSTRUCTIONS and
+              entry['limits']['usage_policy'] == USAGE_POLICY and
+              type(entry['limits']['api_spend_cents']) is int and
+              entry['limits']['api_spend_cents'] == SPEND_CENTS,
+              'Pinned coding task and explicit API spend approval required')
+    e.require(sorted(c['argv'] for c in entry['checks']) == sorted([
+        ['node', '--check', FILE], ['node', '--test', 'test/analyzer.test.js']]),
+        'Exact comment task QA required')
 
 
 def prompt(spec, files):

@@ -1,6 +1,6 @@
-"""Bounded Responses API controller. Text-only connectivity, synthetic broker tests.
+"""Bounded Responses controller with separate observation and coding receivers.
 
-No worker endpoint, model text persistence, hosted tool, shell, or live coding.
+No hosted tool, shell, model-selected path, publication, or automatic retry.
 Supported public REST API: POST https://api.openai.com/v1/responses.
 """
 import argparse
@@ -30,6 +30,9 @@ DEFAULT_PRICING = dict(version='openai-standard-usd-2025-08-07-review-2026-10-23
 
 
 def pricing(value):
+    from src.coding_api import PRICING
+    if value == PRICING:
+        return dict(value)
     e.require(isinstance(value, dict) and set(value) == set(DEFAULT_PRICING) and
               value['model'] == MODEL and isinstance(value['version'], str) and
               0 < len(value['version']) <= 100 and all(type(value[k]) is int and 0 < value[k] <= 1_000_000_000
@@ -54,6 +57,10 @@ def observation_payload(prompt):
 
 
 def maximum_charge(p, output):
+    from src.coding_api import PRICING, MAXIMUM_CHARGE
+    if p == PRICING:
+        e.require(output == 4000, 'Coding output profile changed')
+        return MAXIMUM_CHARGE
     # Overreserve uncached input at full context, even though prompt is tiny.
     return CONTEXT*p['input_nano_usd_per_token']+output*p['output_nano_usd_per_token']
 
@@ -67,8 +74,14 @@ def connectivity_payload():
 def validate_request(body):
     """Pinned text-only contract, checked offline before any connection is opened."""
     try:
-        e.require(type(body) is bytes and len(body) <= 16384, 'Request ceiling')
+        e.require(type(body) is bytes and len(body) <= 32768, 'Request ceiling')
         r = e.decode(body)
+        from src.coding_api import MODEL as CODING_MODEL, payload as coding_payload
+        if isinstance(r, dict) and r.get('model') == CODING_MODEL:
+            e.require(e.canonical(r) == e.canonical(coding_payload(r.get('input'))),
+                      'Unsupported coding request')
+            return
+        e.require(len(body) <= 16384, 'Legacy request ceiling')
         expected = (observation_payload(r.get('input')) if isinstance(r, dict) and
                     r.get('max_output_tokens') == OBSERVATION_OUTPUT else
                     connectivity_payload() if isinstance(r, dict) and
@@ -290,10 +303,14 @@ def _metadata(r, request):
             _schema(e.canonical(r[name]) == e.canonical(expected), 'metadata','unsupported_configuration')
     _schema(r.get('background') is None or r['background'] is False, 'metadata','unsupported_configuration')
     _schema(r.get('service_tier') in (None,'default'), 'metadata','service_tier')
-    _schema(r.get('prompt_cache_retention') in (None,'in_memory'), 'metadata','cache_policy')
+    _schema(r.get('prompt_cache_retention') is None or request['model'] == MODEL and
+            r['prompt_cache_retention'] == 'in_memory', 'metadata','cache_policy')
     # Nonempty state/access/new-model cache settings require a separate review.
-    for name in ('conversation','previous_response_id','prompt','access_programs','moderation','prompt_cache_options'):
+    for name in ('conversation','previous_response_id','prompt','access_programs','moderation'):
         _schema(r.get(name) is None, 'metadata','unsupported_configuration')
+    cache_options = r.get('prompt_cache_options')
+    _schema(cache_options is None or request['model'] != MODEL and
+            cache_options == {'mode':'implicit', 'ttl':'30m'}, 'metadata','unsupported_configuration')
     _schema(r.get('truncation') in (None,'disabled'), 'metadata','unsupported_configuration')
     meta = r.get('metadata')
     _schema(meta is None or isinstance(meta, dict) and
@@ -344,6 +361,8 @@ def _completion(r):
 
 
 def _usage(r, request):
+    from src.coding_api import MODEL as CODING_MODEL, CONTEXT as CODING_CONTEXT
+    coding = request['model'] == CODING_MODEL
     u = r.get('usage')
     _schema(isinstance(u,dict), 'usage','shape')
     keys = {'input_tokens','output_tokens','total_tokens','input_tokens_details','output_tokens_details'}
@@ -351,12 +370,13 @@ def _usage(r, request):
     _schema(set(u) == keys, 'usage','shape')
     i, o, total = u['input_tokens'], u['output_tokens'], u['total_tokens']
     _schema(all(type(v) is int for v in (i,o,total)), 'usage','token_type')
-    _schema(0 <= i <= CONTEXT and 0 <= o <= request['max_output_tokens'] and total >= 0,
+    _schema(0 <= i <= (CODING_CONTEXT if coding else CONTEXT) and 0 <= o <= request['max_output_tokens'] and total >= 0,
             'usage','token_bounds')
     _schema(total == i+o, 'usage','total_mismatch')
     cached = u['input_tokens_details']
     _schema(isinstance(cached,dict) and 'cached_tokens' in cached, 'cached_tokens','shape')
-    _schema(set(cached) <= {'cached_tokens','cache_write_tokens'}, 'cached_tokens','unknown_dimension')
+    _schema(set(cached) <= ({'cached_tokens','cache_write_tokens','cache_write_tokens_details'} if coding
+            else {'cached_tokens','cache_write_tokens'}), 'cached_tokens','unknown_dimension')
     c = cached['cached_tokens']
     _schema(type(c) is int, 'cached_tokens','token_type')
     _schema(0 <= c <= i, 'cached_tokens','token_bounds')
@@ -366,7 +386,11 @@ def _usage(r, request):
         _schema(writes >= 0, 'cached_tokens','token_bounds')
         # A documented zero-valued dimension adds no charge. Nonzero writes
         # require a separately reviewed pricing model; never silently price them.
-        _schema(writes == 0, 'cached_tokens','cache_write_not_priced')
+        _schema(coding or writes == 0, 'cached_tokens','cache_write_not_priced')
+        _schema(writes+c <= i, 'cached_tokens','token_bounds')
+    if coding:
+        from src.coding_api import cache_writes
+        cache_writes(cached)
     reason = u['output_tokens_details']
     _schema(isinstance(reason,dict) and 'reasoning_tokens' in reason, 'reasoning_tokens','shape')
     _schema(set(reason) == {'reasoning_tokens'}, 'reasoning_tokens','unknown_dimension')
@@ -440,15 +464,23 @@ def _receipt(raw, request, p):
     # Nested authoritative structures retain their exact validation below.
     r = {name: r[name] for name in envelope.REVIEWED_FIELDS | envelope.REQUEST_ONLY_FIELDS if name in r}
     _schema(r.get('object') == 'response', 'envelope','object')
-    _schema(r.get('model') == MODEL, 'envelope','model')
+    _schema(request['model'] in (MODEL, 'gpt-6.1-sol') and
+            r.get('model') == request['model'], 'envelope','model')
     _metadata(r, request)
     _completion(r)
     i, o, cached, reasoning = _usage(r, request)
     _output(r)
     cost = (i-cached)*p['input_nano_usd_per_token']+cached*p['cached_nano_usd_per_token']+o*p['output_nano_usd_per_token']
-    return dict(status=r['status'], usage=dict(input_tokens=i, cached_input_tokens=cached,
+    if request['model'] == 'gpt-6.1-sol':
+        from src.coding_api import charge, PRICING
+        _schema(p == PRICING, 'metadata', 'unsupported_configuration')
+        cost = charge(r['usage'])
+    result = dict(status=r['status'], usage=dict(input_tokens=i, cached_input_tokens=cached,
         output_tokens=o, reasoning_tokens=reasoning), estimated_cost_nano_usd=cost,
-        pricing_version=p['version'], model=MODEL, retry=False, tools_executed=0)
+        pricing_version=p['version'], model=request['model'], retry=False, tools_executed=0)
+    if request['model'] == 'gpt-6.1-sol':
+        result['usage']['cache_write_tokens'] = r['usage']['input_tokens_details']['cache_write_tokens']
+    return result
 
 
 def receipt(raw, request, p):
@@ -470,11 +502,21 @@ class Controller:
         self.budget, self.transport = budget, transport
         self.prices = pricing(DEFAULT_PRICING if prices is None else prices)
 
-    def _request(self, ident, request, binding, guard, *, _observation=False, _phase=None):
+    def _request(self, ident, request, binding, guard, *, _observation=False, _coding=False, _phase=None):
         # Internal finite progress markers only; never pass response data to a callback.
         def phase(value):
-            if _observation and _phase is not None:
+            if (_observation or _coding) and _phase is not None:
                 _phase(value)
+        from src.coding_api import PRICING, visible_edit
+        e.require(type(_coding) is bool and not (_coding and _observation), 'Separate response contract required')
+        if _coding:
+            e.require(self.prices == PRICING and (
+                type(self.transport) is ResponsesTransport and binding.get('receiver') == 'live-coding-only' or
+                getattr(self.transport, 'synthetic', False) is True and binding.get('receiver') == 'synthetic-coding-only'),
+                'Trusted coding transport required')
+            validate_request(e.canonical(request).encode())
+        else:
+            e.require(self.prices['model'] == MODEL, 'Coding requires dedicated receiver')
         e.require(type(_observation) is bool and (not _observation or
                   getattr(self.transport, 'synthetic', False) is True and
                   binding.get('receiver') == 'synthetic-observation-only' or
@@ -488,7 +530,7 @@ class Controller:
                                       model_config={k:v for k,v in request.items() if k != 'input'},
                                       prompt_digest=e.digest(request['input'])))
         if old is not None:
-            e.require(not _observation, 'Observation already attempted; no replay or redispatch')
+            e.require(not (_observation or _coding), 'Request already attempted; no replay or redispatch')
             return old
         guard()  # Failure after reservation intentionally leaves durable hold.
         try:
@@ -510,6 +552,12 @@ class Controller:
         self.budget.settle(ident, result['estimated_cost_nano_usd'], result)
         phase('post_settlement_authorization')
         guard()  # Never deliver model output on revoked/expired/source-changed grant.
+        if _coding:
+            phase('coding_response')
+            edit = visible_edit(raw)
+            phase('post_settlement_authorization')
+            guard()
+            return edit
         if _observation:
             # A fixed internal boundary, never a raw-response callback/passthrough.
             from src.observation_planning import _classification

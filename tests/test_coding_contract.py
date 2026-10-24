@@ -29,6 +29,14 @@ class ContractTests(unittest.TestCase):
                 'export function compile', '// Compile the supplied rows.\n'
                 '// Preserve their order.\nexport function compile').encode())
 
+    def test_indented_declaration_keeps_original_indentation(self):
+        source = b'  export function compile(rows) {\n    return rows;\n  }\n'
+        files = {c.FILE: (0o644, source)}
+        edit = e.canonical(dict(old='export function compile(rows) {',
+            new='// Compile the rows.\n  export function compile(rows) {')).encode()
+        out = c.apply(edit, files, source_manifest=manifest(files), allowed=[c.FILE])
+        self.assertEqual(out[c.FILE][1], b'  // Compile the rows.\n'+source)
+
     def test_executable_or_indentation_change_rejected(self):
         for old, new in [('  return rows;', 'return rows;'),
                          ('return rows;', 'return [];'),
