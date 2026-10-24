@@ -17,6 +17,12 @@ class CanaryTests(unittest.TestCase):
             canary.ORIGINAL: self.f.policy['catalog']['tasks']['syntax-review']}
         self.f.save()
         self.old = local_runner.Runner(self.f.policy_path, self.f.policy['state'], lambda:self.f.f.now)
+        # Runner's SQLite creation inherits the caller's umask (0644 under 022).
+        # Observation review requires this temporary execution ledger to be private.
+        catalog_ledger = Path(self.f.policy['state'])/'local.sqlite'
+        catalog_ledger.chmod(0o600)
+        for path in (catalog_ledger, self.f.policy_path, self.f.broker_path, self.f.api_path):
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600, str(path))
         self.first = self.old.task_prepare(canary.ORIGINAL)
         self.old.approve(self.first['id'], 'APPROVE '+self.first['binding'])
         self.broker = live.ObservationBroker(self.f.broker_config, lambda:self.f.f.now)
@@ -25,6 +31,7 @@ class CanaryTests(unittest.TestCase):
         self.version = self.f.root/'policy-v3.json'
         self.version.write_text(e.canonical(canary.candidate(self.f.policy_path)))
         self.version.chmod(0o600)
+        self.assertEqual(self.version.stat().st_mode & 0o777, 0o600)
         fence = patch('src.api_controller.ResponsesTransport.send',
                       side_effect=AssertionError('No API requests'))
         fence.start(); self.addCleanup(fence.stop)
