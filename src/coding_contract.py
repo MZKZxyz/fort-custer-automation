@@ -48,6 +48,30 @@ def safe_replacement(c, new):
                   not any(v in new for v in ('++','--','**','//','/*')) and
                   all(not re.match(r'[A-Za-z]',t) or t in c['symbols'] for t in tokens) and
                   not re.search(r'(?:[A-Za-z0-9_]|\))\s*\(',new), 'Only reviewed arithmetic expressions permitted')
+        words = [t for t in tokens if not t.isspace()]
+        position = 0
+        def atom(depth=0):
+            nonlocal position
+            e.require(depth <= 64 and position < len(words), 'Incomplete arithmetic expression')
+            token = words[position]; position += 1
+            if token in ('+','-'): atom(depth+1)
+            elif token == '(':
+                expression(depth+1)
+                e.require(position < len(words) and words[position] == ')', 'Unbalanced expression')
+                position += 1
+            else: e.require(token in c['symbols'] or re.fullmatch(r'[0-9]+(?:\.[0-9]+)?',token), 'Arithmetic operand required')
+        def term(depth):
+            nonlocal position
+            atom(depth)
+            while position < len(words) and words[position] in ('*','/','%'):
+                position += 1; atom(depth)
+        def expression(depth=0):
+            nonlocal position
+            term(depth)
+            while position < len(words) and words[position] in ('+','-'):
+                position += 1; term(depth)
+        expression()
+        e.require(position == len(words), 'Only one arithmetic expression permitted')
         return
     e.require(new.startswith(c['old']+'\n'), 'Existing reviewed anchor must be preserved')
     addition = new[len(c['old'])+1:]

@@ -61,7 +61,7 @@ class ContractTests(unittest.TestCase):
         arithmetic = dict(validation='numeric-expression-v1',symbols=['width','height'])
         c.safe_replacement(arithmetic,'width * height + 1')
         for value in ('process.exit(0)','width.constructor','width(height)','width++','width; height',
-                      'width ** height','width // height'):
+                      'width ** height','width // height','/width/','width height','(width + height'):
             with self.assertRaises(ValueError): c.safe_replacement(arithmetic,value)
 
     def test_source_file_and_contract_mismatch(self):
