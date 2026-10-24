@@ -25,6 +25,17 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
+      - name: Install age for full encrypted-restore regression coverage (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends age
+          age --version
+      - name: Install age for full encrypted-restore regression coverage (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install age
+          age --version
       - name: Offline API reservations, transport and hostile tool contracts
         run: |
           python -m unittest discover -s tests -p test_catalog_activation.py -v
@@ -53,6 +64,7 @@ jobs:
           FC_CODEX_PROBE_BINARY="$(find "$RUNNER_TEMP/fc-codex/node_modules" -type f -path '*/vendor/*/bin/codex' | head -n 1)"
           test -n "$FC_CODEX_PROBE_BINARY"
           export FC_CODEX_PROBE_BINARY
+          echo "FC_CODEX_PROBE_BINARY=$FC_CODEX_PROBE_BINARY" >> "$GITHUB_ENV"
           python -m unittest discover -s tests -p test_codex_boundary.py -v
       - name: Full regression suite (both platforms)
         if: always()
