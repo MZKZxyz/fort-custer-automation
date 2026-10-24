@@ -212,3 +212,23 @@ success and never permits retry. Abrupt process termination or unavailable ledge
 storage can prevent diagnostic persistence. These conditions still consume the
 authorization and never release a budget hold or authorize another request.
 
+
+### Prompt compatibility (Sprint 6.13F)
+
+The model now returns exactly `schema` and `disposition`; trusted code derives
+`reason_code` using the four mappings in [the contract](OBSERVATION-PLANNING.md).
+The external decision remains `observation-decision-v1`. Extra fields, including
+any model-supplied `reason_code`, are rejected after validated usage settlement.
+
+This changes the prompt digest. Historical authorizations accept the exact old
+prompt digest for ledger inspection, diagnostics and revocation only. Dispatch
+and delivery still require the current prompt binding. Old dispatched grants
+remain consumed, including after restart; old undispatched grants cannot run
+with the updated prompt. No ledger or configuration migration is required.
+
+Preparing a fresh observation requires a separate operator review and interactive
+authorization of the updated prompt digest, with a fresh independently approved
+execution/task binding under the existing uniqueness constraints. The same
+execution or task cannot be reauthorized in this ledger, even after revocation.
+Preserve historical ledgers, spend, holds and deployed configuration; do not reset
+or replace them to obtain another attempt. This change authorizes no live request.

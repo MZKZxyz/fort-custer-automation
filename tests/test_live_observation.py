@@ -69,6 +69,41 @@ class LiveTests(unittest.TestCase):
         self.assertNotIn(claim['token'], self.calls[0]['input'])
         self.assertEqual(self.budget.status()['unresolved_requests'], 0)
 
+    def test_captured_inconsistent_pair_is_billed_rejected_and_consumed(self):
+        claim = self.authorize()
+        self.raw = output(e.canonical(dict(schema=SCHEMA, disposition='ready_for_review',
+                                          reason_code='policy_blocked')))
+        with self.assertRaises(ValueError): self.observe(claim)
+        self.assertGreater(self.budget.status()['lifetime_encumbered_nano_usd'], 0)
+        self.assert_failure(claim, 'classification', True)
+
+    def test_legacy_prompt_records_readable_but_never_reinterpreted(self):
+        from src.observation_planning import _legacy_observation_prompt
+        with patch('src.live_observation.observation_prompt', _legacy_observation_prompt):
+            claim = self.authorize()
+            self.b.admit(claim, 'operator')
+        self.b = live.ObservationBroker(self.config, lambda:self.f.f.now)
+        before = self.b.path.read_bytes()
+        row = self.b.inspect()['tasks'][claim['execution']]
+        self.assertEqual(row['state'], 'dispatched')
+        with self.assertRaises(ValueError): self.observe(claim)
+        with self.assertRaises(ValueError): self.b.admit(claim, 'operator')
+        with self.assertRaises(ValueError): self.authorize()
+        self.assertEqual(self.b.path.read_bytes(), before)
+        self.assertEqual(len(self.calls), 0)
+        self.b.record_failure(claim, 'classification')
+        self.assertEqual(self.b.inspect()['tasks'][claim['execution']]['terminal_failure']['phase'],
+                         'classification')
+
+    def test_legacy_undispatched_authorization_cannot_use_new_prompt(self):
+        from src.observation_planning import _legacy_observation_prompt
+        with patch('src.live_observation.observation_prompt', _legacy_observation_prompt):
+            claim = self.authorize()
+        with self.assertRaises(ValueError): self.observe(claim)
+        self.assertEqual(self.b.inspect()['tasks'][claim['execution']]['state'], 'authorized')
+        self.assertEqual(len(self.calls), 0)
+        self.assertEqual(self.budget.status()['lifetime_encumbered_nano_usd'], 0)
+
     def test_interactive_confirmation_required_and_disabled_default(self):
         for answer in ('', 'yes', 'CONFIRM'):
             with patch('src.live_observation.terminal_challenge', return_value=answer), patch('sys.stdout', new=io.StringIO()):
