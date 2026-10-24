@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: offline-security-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 jobs:
   offline-security:
     strategy:
@@ -36,38 +39,30 @@ jobs:
         run: |
           brew install age
           age --version
-      - name: Offline API reservations, transport and hostile tool contracts
-        run: |
-          python -m unittest discover -s tests -p test_catalog_activation.py -v
-          python -O -m unittest discover -s tests -p test_catalog_activation.py -q
-          python -m unittest discover -s tests -p test_live_observation.py -v
-          python -O -m unittest discover -s tests -p test_live_observation.py -q
-          python -m unittest discover -s tests -p test_observation_planning.py -v
-          python -O -m unittest discover -s tests -p test_observation_planning.py -q
-          python -m unittest discover -s tests -p test_api_controller.py -v
-          python -O -m unittest discover -s tests -p test_api_controller.py -q
-          python -m unittest discover -s tests -p test_api_response_validation.py -v
-          python -O -m unittest discover -s tests -p test_api_response_validation.py -q
-      - name: Broker, kernel peer authentication and failure tests
-        run: python -m unittest discover -s tests -p test_grant_broker.py -v
-      - name: Activation preparation, immutable bundles and exhaustion holds
-        run: python -m unittest discover -s tests -p test_activation_readiness.py -v
-      - name: Optimized activation safety checks
-        run: python -O -m unittest discover -s tests -p test_activation_readiness.py -q
-      - name: Synthetic subprocess transfer and independent QA
-        run: PYTHONPATH=.:tests python tests/test_grant_broker.py --demo
       - name: Install pinned official Codex for offline executor probes
         run: npm install --prefix "$RUNNER_TEMP/fc-codex" @openai/codex@0.163.0
-      - name: Actual executor boundary observations (no login or inference)
+      - name: Select pinned executor for offline tests (no login or inference)
         shell: bash
         run: |
           FC_CODEX_PROBE_BINARY="$(find "$RUNNER_TEMP/fc-codex/node_modules" -type f -path '*/vendor/*/bin/codex' | head -n 1)"
           test -n "$FC_CODEX_PROBE_BINARY"
           export FC_CODEX_PROBE_BINARY
           echo "FC_CODEX_PROBE_BINARY=$FC_CODEX_PROBE_BINARY" >> "$GITHUB_ENV"
-          python -m unittest discover -s tests -p test_codex_boundary.py -v
-      - name: Full regression suite (both platforms)
+      - name: Lint
+        timeout-minutes: 3
+        run: make lint
+      - name: Full standard regression suite (once per platform)
+        timeout-minutes: 21
+        run: python -u tests/ci_runner.py full --output "$RUNNER_TEMP/fc616-ci-results"
+      - name: Focused optimized security boundaries
+        if: ${{ !cancelled() }}
+        timeout-minutes: 9
+        run: python -u tests/ci_runner.py optimized-security --output "$RUNNER_TEMP/fc616-ci-results"
+      - name: Preserve test timings and incomplete-test journals
         if: always()
-        run: |
-          make lint test
-          python -O -m unittest discover -s tests -q
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: offline-security-timings-${{ matrix.os }}
+          path: ${{ runner.temp }}/fc616-ci-results
+          if-no-files-found: warn
+          retention-days: 14

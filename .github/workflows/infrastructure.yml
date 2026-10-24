@@ -12,10 +12,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Infrastructure policy, regressions and optimized fail-closed tests
-        run: |
-          make lint test
-          python3 -O -m unittest discover -s tests -q
+      - name: Infrastructure policy lint (regressions run in the OS matrix)
+        run: make lint
       - name: Install checksum-pinned gVisor for synthetic containers only
         run: |
           python3 - <<'PYCODE'
