@@ -399,3 +399,10 @@ The [observation planning architecture and runbook](docs/OBSERVATION-PLANNING.md
 describe the synthetic-only broker adapter, versioned classification schema,
 trusted provenance, durable accounting and requirements for independently
 authorizing future live planning. Live broker-to-API dispatch remains disabled.
+
+## Sprint 6.13B: supervised live observation
+
+The [Mac observation runbook](docs/LIVE-OBSERVATION.md) describes a separate,
+interactive, single-use observation grant and the production Responses integration.
+It is disabled by default and has no coding, QA or publication receiver.
+No live inference is run during implementation or CI.

@@ -1,6 +1,8 @@
 """Versioned single-ledger grant authority, SYNTHETIC ONLY in Sprint 6.9.
 
-No live admission/dispatch implementation exists. Legacy approvals are read-only
+This base protocol has no live admission/dispatch implementation.
+The separate live_observation.ObservationBroker v2 protocol admits advisory
+observations only, without migrating these grants. Legacy approvals are read-only
 inputs to explicitly requested synthetic experiments, never migrated live grants.
 The future service must exclusively own this ledger and all live claim requests.
 """
@@ -22,6 +24,7 @@ STATES = ACTIVE | {'validated', 'interrupted'}
 
 
 class Broker:
+    protocol = PROTOCOL
     def __init__(self, config, clock=time.time):
         # Reuse strict protected-store/STOP/limits configuration, but a separate
         # protocol prevents accidentally opening the coordinator's historical DB.
@@ -47,7 +50,7 @@ class Broker:
                 CREATE TABLE events(seq INTEGER PRIMARY KEY, execution TEXT NOT NULL REFERENCES grants(execution),
                     at REAL NOT NULL, state TEXT NOT NULL, document TEXT NOT NULL);
             ''')
-            db.execute('INSERT INTO metadata VALUES (?,?)', (PROTOCOL, self.config_digest))
+            db.execute('INSERT INTO metadata VALUES (?,?)', (self.protocol, self.config_digest))
             for table in ('metadata', 'grants', 'events'):
                 for op in ('UPDATE', 'DELETE'):
                     db.execute(f"CREATE TRIGGER immutable_{table}_{op} BEFORE {op} ON {table} BEGIN SELECT RAISE(ABORT,'Immutable broker evidence'); END")
@@ -69,7 +72,7 @@ class Broker:
                 pages = self.c['max_storage_bytes']//db.execute('PRAGMA page_size').fetchone()[0]
                 db.execute(f'PRAGMA max_page_count={pages}')
             db.execute('BEGIN IMMEDIATE' if write else 'BEGIN')
-            e.require([tuple(r) for r in db.execute('SELECT * FROM metadata')] == [(PROTOCOL, self.config_digest)],
+            e.require([tuple(r) for r in db.execute('SELECT * FROM metadata')] == [(self.protocol, self.config_digest)],
                       'Broker schema/configuration mismatch')
             e.require({r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} ==
                       {'metadata', 'grants', 'events'}, 'Unknown broker schema')

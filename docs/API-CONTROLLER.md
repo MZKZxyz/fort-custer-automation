@@ -327,3 +327,6 @@ allowlist. The [current projection policy](RESPONSES-PROJECTION.md) supersedes
 its former top-level unknown-field rejection. Historical diagnostics remain
 decodable; new unknown metadata never supplies diagnostic names or values.
 
+
+Sprint 6.13B adds a separately authorized [supervised live observation](LIVE-OBSERVATION.md)
+profile through a versioned observation broker; connectivity remains separately gated.

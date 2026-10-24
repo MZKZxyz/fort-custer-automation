@@ -21,6 +21,7 @@ MODEL = 'gpt-5-nano-2025-08-07'
 CONTEXT = 400_000  # Reserve full model context: no approximate tokenizer assumptions.
 MAX_INPUT_BYTES = 2048
 MAX_OUTPUT = 64
+OBSERVATION_OUTPUT = 512
 CONNECTIVITY_OUTPUT = 256
 MAX_RESPONSE = 256*1024
 DEADLINE = 20
@@ -46,6 +47,12 @@ def payload(prompt, output=MAX_OUTPUT):
                 reasoning=dict(effort='minimal'), prompt_cache_retention='in_memory')
 
 
+def observation_payload(prompt):
+    request = payload(prompt)
+    request['max_output_tokens'] = OBSERVATION_OUTPUT
+    return request
+
+
 def maximum_charge(p, output):
     # Overreserve uncached input at full context, even though prompt is tiny.
     return CONTEXT*p['input_nano_usd_per_token']+output*p['output_nano_usd_per_token']
@@ -62,7 +69,9 @@ def validate_request(body):
     try:
         e.require(type(body) is bytes and len(body) <= 16384, 'Request ceiling')
         r = e.decode(body)
-        expected = (connectivity_payload() if isinstance(r, dict) and
+        expected = (observation_payload(r.get('input')) if isinstance(r, dict) and
+                    r.get('max_output_tokens') == OBSERVATION_OUTPUT else
+                    connectivity_payload() if isinstance(r, dict) and
                     r.get('max_output_tokens') == CONNECTIVITY_OUTPUT else
                     payload(r.get('input'), r.get('max_output_tokens')))
         e.require(isinstance(r, dict) and e.canonical(r) == e.canonical(expected),
@@ -464,8 +473,10 @@ class Controller:
     def _request(self, ident, request, binding, guard, *, _observation=False):
         e.require(type(_observation) is bool and (not _observation or
                   getattr(self.transport, 'synthetic', False) is True and
-                  binding.get('receiver') == 'synthetic-observation-only'),
-                  'Observation parsing requires synthetic planning')
+                  binding.get('receiver') == 'synthetic-observation-only' or
+                  _observation and binding.get('receiver') == 'live-observation-only' and
+                  type(self.transport) is ResponsesTransport),
+                  'Trusted observation transport required')
         guard()
         old = self.budget.reserve(ident, e.digest(dict(binding=binding, request=request, pricing=self.prices)),
                                   maximum_charge(self.prices, request['max_output_tokens']),
@@ -535,6 +546,22 @@ def readiness():
                  'separately authorized draft publisher', 'operator pricing and connectivity review'])
 
 
+def configuration(path):
+    c = e.decode(e.regular(path).read_bytes())
+    e.require(set(c) == {'schema','connectivity_enabled','credential_file','budget_file',
+        'timezone','daily_nano_usd','lifetime_nano_usd','pricing'} and
+        c['schema'] == 'responses-controller-v1' and type(c['connectivity_enabled']) is bool,
+        'Unreviewed controller configuration')
+    p = pricing(c['pricing'])
+    key_path = Path(c['credential_file']).expanduser().absolute()
+    budget_path = Path(c['budget_file']).expanduser().absolute()
+    e.require(key_path != budget_path and not budget_path.resolve().is_relative_to(
+              Path(__file__).resolve().parents[1]), 'External distinct budget/credential paths required')
+    budget = Budget(Path(c['budget_file']).expanduser(), timezone=c['timezone'],
+        daily=c['daily_nano_usd'], lifetime=c['lifetime_nano_usd'])
+    return c, p, budget
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', choices=['readiness','init-budget','status','audit','connectivity','reconcile'])
@@ -547,18 +574,7 @@ def main():
     try:
         if args.command == 'readiness': result = readiness()
         else:
-            c = e.decode(e.regular(args.config).read_bytes())
-            e.require(set(c) == {'schema','connectivity_enabled','credential_file','budget_file',
-                'timezone','daily_nano_usd','lifetime_nano_usd','pricing'} and
-                c['schema'] == 'responses-controller-v1' and type(c['connectivity_enabled']) is bool,
-                'Unreviewed controller configuration')
-            p = pricing(c['pricing'])
-            key_path = Path(c['credential_file']).expanduser().absolute()
-            budget_path = Path(c['budget_file']).expanduser().absolute()
-            e.require(key_path != budget_path and not budget_path.resolve().is_relative_to(
-                      Path(__file__).resolve().parents[1]), 'External distinct budget/credential paths required')
-            budget = Budget(Path(c['budget_file']).expanduser(), timezone=c['timezone'],
-                daily=c['daily_nano_usd'], lifetime=c['lifetime_nano_usd'])
+            c, p, budget = configuration(args.config)
             if args.command == 'init-budget': budget.initialize(); result = budget.status()
             elif args.command == 'status': result = budget.status()
             elif args.command == 'audit': result = budget.audit()
