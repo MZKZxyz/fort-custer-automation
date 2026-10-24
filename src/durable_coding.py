@@ -365,12 +365,12 @@ class DurableBroker(CodingBroker):
             self._append(db, execution, 'cancelled')
         return dict(execution=execution, state='cancelled', retry=False)
 
-    def adjudicate(self, execution, evidence_file, artifact_file):
+    def adjudicate(self, execution, evidence_file, artifact_file, qa_termination_file=None):
         """Human reviews retained external billing AND provider completion evidence."""
         raw = e.regular(evidence_file).read_bytes()
         e.require(0 < len(raw) <= 8192, 'Bounded external evidence manifest required')
         evidence = e.decode(raw)
-        from src.billing_reconciliation import FIELDS
+        from src.billing_reconciliation import FIELDS, validate_amount
         from src.api_evidence import identifier
         from urllib.parse import urlparse
         e.require(isinstance(evidence, dict) and set(evidence) == FIELDS and
@@ -382,9 +382,12 @@ class DurableBroker(CodingBroker):
                   (identifier(evidence['provider_request_id'], 'req_') is not None or
                    identifier(evidence['provider_response_id'], 'resp_') is not None),
                   'Linked final provider outcome evidence required')
+        validate_amount(evidence)
         link = urlparse(evidence['reference'])
         e.require(link.scheme == 'https' and link.hostname in
-                  {'platform.openai.com','help.openai.com','support.openai.com'}, 'Provider-verifiable reference required')
+                  {'platform.openai.com','help.openai.com','support.openai.com'} and
+                  not link.username and not link.password and not link.query and not link.fragment,
+                  'Provider-verifiable reference required')
         artifact = e.regular(artifact_file)
         e.require(0 < artifact.stat().st_size <= 8*1024*1024, 'Bounded external artifact required')
         import hashlib
@@ -397,26 +400,49 @@ class DurableBroker(CodingBroker):
             e.require(row['state'] in {'blocked','dispatched','response_received','accounting_settled','qa_running','revoked','authorized'},
                       'No indeterminate operation to adjudicate')
             claim = row['claim']
+            reviewed_row_digest = e.digest(row)
+            qa_uncertain = (row['state'] == 'qa_running' or execution in legacy and
+                            row['state'] == 'dispatched' and row['terminal_failure'] is None)
+        qa_digest = None
+        if qa_uncertain:
+            termination = e.regular(qa_termination_file)
+            e.require(0 < termination.stat().st_size <= 1024*1024, 'Retained local QA termination evidence required')
+            qa_digest = hashlib.sha256(termination.read_bytes()).hexdigest()
         billing = self.billing(claim)
         e.require(evidence['request_id'] == billing['request_id'], 'Request linkage mismatch')
+        for item in billing['audit']:
+            if item['kind'] == 'response_observed_untrusted':
+                observed = e.decode(item['evidence'])
+                for key in ('provider_request_id','provider_response_id'):
+                    if observed.get(key) is not None:
+                        e.require(evidence[key] == observed[key], 'Provider identifier conflict')
         e.require(billing['state'] == 'settled' and evidence['actual_nano_usd'] == billing['reservation']['actual'] or
                   billing['state'] == 'not_reserved' and evidence['actual_nano_usd'] == 0 and
                   evidence['outcome'] == 'confirmed-no-charge', 'Billing outcome conflicts with closure evidence')
         e.require(billing['state'] == 'settled' or billing['state'] == 'not_reserved',
                   'Reconcile shared billing reservation first')
         review = dict(execution=execution, evidence=digest, manifest_sha256=hashlib.sha256(raw).hexdigest(),
-                      billing=billing['state'], retry=False,
+                      billing=billing['state'], qa_termination_sha256=qa_digest, retry=False,
                       operator=pwd.getpwuid(os.getuid()).pw_name)
         print(e.canonical(review))
-        challenge = 'CONFIRM PROVIDER TERMINAL NO REPLAY '+e.digest(review)
+        challenge = 'CONFIRM PROVIDER TERMINAL AND ALL QA STOPPED NO REPLAY '+e.digest(review)
         e.require(terminal_challenge(challenge) == challenge, 'External outcome review required')
+        e.require(e.regular(evidence_file).read_bytes() == raw and
+                  hashlib.sha256(e.regular(artifact_file).read_bytes()).hexdigest() == digest,
+                  'Evidence changed during terminal review')
+        if qa_digest is not None:
+            e.require(hashlib.sha256(e.regular(qa_termination_file).read_bytes()).hexdigest() == qa_digest,
+                      'QA termination evidence changed during review')
         with self.tx(True) as db:
             rows = self._rows(db)
             if execution not in rows:
-                e.require(execution in CodingBroker._rows(self, db), 'Missing legacy evidence')
+                legacy_now = CodingBroker._rows(self, db)
+                e.require(execution in legacy_now and e.digest(legacy_now[execution]) == reviewed_row_digest,
+                          'Legacy outcome changed during review')
                 db.execute('INSERT INTO coding_legacy_closures VALUES (?,?)', (execution, e.canonical(review)))
             else:
-                e.require(rows[execution]['state'] in TRANSITIONS['adjudicated'], 'Outcome already terminal')
+                e.require(rows[execution]['state'] in TRANSITIONS['adjudicated'] and
+                          e.digest(rows[execution]) == reviewed_row_digest, 'Outcome changed during review')
                 self._append(db, execution, 'adjudicated', review)
         return review
 
@@ -443,7 +469,7 @@ def main():
     parser.add_argument('command', choices=['upgrade','prepare','approve','queue','authorize','dispatch','list','inspect','enqueue','cancel','adjudicate'])
     parser.add_argument('--broker', required=True)
     parser.add_argument('--policy'); parser.add_argument('--task'); parser.add_argument('--execution')
-    parser.add_argument('--artifact'); parser.add_argument('--evidence'); parser.add_argument('--maximum-jobs', type=int, default=1000)
+    parser.add_argument('--qa-termination'); parser.add_argument('--artifact'); parser.add_argument('--evidence'); parser.add_argument('--maximum-jobs', type=int, default=1000)
     args = parser.parse_args()
     try:
         broker = DurableBroker(e.decode(e.regular(args.broker).read_bytes()))
@@ -461,7 +487,7 @@ def main():
             if args.execution: result['tasks'] = {args.execution:result['tasks'][args.execution]}
             if args.command == 'list': result = {k:result[k] for k in ('schema','summary','stop','budget')}
         elif args.command == 'cancel': result = broker.cancel(args.execution)
-        elif args.command == 'adjudicate': result = broker.adjudicate(args.execution, args.evidence, args.artifact)
+        elif args.command == 'adjudicate': result = broker.adjudicate(args.execution, args.evidence, args.artifact, args.qa_termination)
         else:
             from src.coding_canary import run
             with broker.tx() as db: claim = broker._rows(db)[args.execution]['claim']

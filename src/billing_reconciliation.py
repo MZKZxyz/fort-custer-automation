@@ -17,6 +17,28 @@ FIELDS = {'schema','request_id','execution','provider_request_id','provider_resp
           'currency','final','provider_terminal','outcome','model','service_tier','pricing_version','usage'}
 
 
+def validate_amount(m):
+    """Verify supported billing arithmetic; provider authenticity stays external."""
+    from src.coding_api import MODEL, PRICING, CONTEXT, OUTPUT, charge
+    e.require(type(m['actual_nano_usd']) is int and m['actual_nano_usd'] >= 0,
+              'Integer final charge required')
+    if m['outcome'] == 'confirmed-no-charge':
+        e.require(m['actual_nano_usd'] == 0, 'No-charge evidence cannot carry a charge')
+        return
+    u = m['usage']
+    e.require(m['outcome'] == 'billed' and m['actual_nano_usd'] > 0 and
+              m['model'] == MODEL and m['service_tier'] == 'default' and
+              m['pricing_version'] == PRICING['version'] and isinstance(u,dict) and
+              set(u) == {'input_tokens','cached_input_tokens','cache_write_tokens','output_tokens','reasoning_tokens'} and
+              all(type(v) is int and v >= 0 for v in u.values()) and
+              u['cached_input_tokens']+u['cache_write_tokens'] <= u['input_tokens'] <= CONTEXT and
+              u['reasoning_tokens'] <= u['output_tokens'] <= OUTPUT,
+              'Reviewed model, pricing and consistent full usage required')
+    calculated = charge(dict(input_tokens=u['input_tokens'],output_tokens=u['output_tokens'],
+        input_tokens_details=dict(cached_tokens=u['cached_input_tokens'],cache_write_tokens=u['cache_write_tokens'])))
+    e.require(calculated == m['actual_nano_usd'], 'Provider amount does not match reviewed pricing')
+
+
 def reconcile(budget, manifest_file, artifact_file):
     raw = e.regular(manifest_file).read_bytes()
     e.require(len(raw) <= 8192, 'Evidence manifest ceiling')
@@ -30,7 +52,7 @@ def reconcile(budget, manifest_file, artifact_file):
               'Separate retained provider artifact required')
     link = urlparse(m['reference'])
     e.require(link.scheme == 'https' and link.hostname in {'platform.openai.com','help.openai.com','support.openai.com'}
-              and not link.username and not link.password and len(m['reference']) <= 512,
+              and not link.username and not link.password and not link.query and not link.fragment and len(m['reference']) <= 512,
               'Provider-verifiable reference required')
     e.require(e.sha(m['request_id'],32) and e.sha(m['execution'],32) and
               (identifier(m['provider_request_id'],'req_') is not None or
@@ -42,14 +64,7 @@ def reconcile(budget, manifest_file, artifact_file):
               m['outcome'] in {'billed','confirmed-no-charge'} and
               (m['actual_nano_usd'] > 0 or m['outcome'] == 'confirmed-no-charge'),
               'Final attributable provider outcome required')
-    if m['outcome'] == 'billed':
-        from src.coding_api import MODEL, PRICING
-        e.require(m['model'] == MODEL and m['service_tier'] == 'default' and
-                  m['pricing_version'] == PRICING['version'] and isinstance(m['usage'],dict) and
-                  set(m['usage']) == {'input_tokens','cached_input_tokens','cache_write_tokens',
-                                     'output_tokens','reasoning_tokens'} and
-                  all(type(v) is int and v >= 0 for v in m['usage'].values()),
-                  'Reviewed model, tier, pricing and full usage required')
+    validate_amount(m)
     with budget.tx() as db:
         r = db.execute('SELECT * FROM requests WHERE id=?',(m['request_id'],)).fetchone()
         e.require(r is not None and r['actual'] is None and m['actual_nano_usd'] <= r['reserved'],
@@ -71,6 +86,9 @@ def reconcile(budget, manifest_file, artifact_file):
     print(e.canonical(review))
     challenge = 'VERIFIED EXTERNAL PROVIDER BILLING '+e.digest(review)
     e.require(terminal_challenge(challenge) == challenge, 'Operator must independently verify provider evidence')
+    e.require(e.regular(manifest_file).read_bytes() == raw and
+              hashlib.sha256(e.regular(artifact_file).read_bytes()).hexdigest() == digest,
+              'Evidence changed during terminal review')
     # The retained artifacts, account identity and linkage are reviewed externally;
     # only hashes and finite billing evidence enter the accounting audit.
     budget.settle(m['request_id'], m['actual_nano_usd'],

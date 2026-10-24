@@ -74,8 +74,8 @@ class DurableTests(unittest.TestCase):
             reference='https://help.openai.com/offline-evidence',
             artifact_sha256=hashlib.sha256(artifact.read_bytes()).hexdigest(),actual_nano_usd=amount,
             currency='USD',final=True,provider_terminal=True,outcome=outcome,model=profile.MODEL,service_tier='default',
-            pricing_version=profile.PRICING['version'],usage=dict(input_tokens=100,cached_input_tokens=0,
-                cache_write_tokens=0,output_tokens=10,reasoning_tokens=0))
+            pricing_version=profile.PRICING['version'],usage=dict(input_tokens=517,cached_input_tokens=0,
+                cache_write_tokens=0,output_tokens=43,reasoning_tokens=0))
         path = root/'billing-evidence.json'; path.write_text(e.canonical(value)); path.chmod(0o600)
         return path,artifact
 
@@ -145,6 +145,23 @@ class DurableTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.authorize(self.second,'regression')
         self.assertEqual(len(self.transport.calls),1)
         self.assertEqual(self.budget.status()['unresolved_nano_usd'],profile.MAXIMUM_CHARGE)
+
+    def test_crash_during_qa_needs_local_termination_proof(self):
+        claim = self.authorize(); self.broker.admit(claim,'operator')
+        ident = e.digest(claim)[:32]
+        self.budget.reserve(ident,'a'*64,profile.MAXIMUM_CHARGE)
+        self.budget.settle(ident,1464000,{'status':'completed'})
+        self.broker.progress(claim,'response_validation')
+        self.broker.progress(claim,'post_settlement_authorization')
+        self.broker.progress(claim,'independent_qa')
+        path,artifact = self.external(claim)
+        with self.terminal(), self.assertRaises((ValueError,TypeError)):
+            self.broker.adjudicate(claim['execution'],path,artifact)
+        termination = self.f.root/'qa-termination.txt'
+        termination.write_text('SYNTHETIC administrator proof: controller and QA descendants stopped')
+        termination.chmod(0o600)
+        with self.terminal(): self.broker.adjudicate(claim['execution'],path,artifact,termination)
+        self.second_success()
 
     def test_unknown_response_keeps_billing_fenced_across_new_broker(self):
         claim = self.authorize(); self.transport.raw = b'not JSON'
@@ -249,6 +266,7 @@ class DurableTests(unittest.TestCase):
         original = e.decode(path.read_bytes())
         for key,value in [('final',False),('actual_nano_usd',0),('execution','f'*32),
                           ('provider_response_id','resp_conflict'),('artifact_sha256','a'*64),
+                          ('outcome','confirmed-no-charge'),('usage',dict(original['usage'],input_tokens=1)),
                           ('reference','https://attacker.invalid/record')]:
             path.write_text(e.canonical(dict(original,**{key:value})))
             with self.terminal(), self.assertRaises(ValueError): reconcile(self.budget,path,artifact)

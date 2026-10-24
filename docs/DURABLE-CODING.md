@@ -128,7 +128,7 @@ confirmation and a separate protected JSON manifest with exactly these fields:
   "source": "provider-support-confirmation",
   "reference": "https://help.openai.com/RETAINED_SUPPORT_REFERENCE",
   "artifact_sha256": "SHA256_OF_SEPARATE_RETAINED_PROVIDER_ARTIFACT",
-  "actual_nano_usd": 123456,
+  "actual_nano_usd": 300000,
   "currency": "USD",
   "final": true,
   "provider_terminal": true,
@@ -161,16 +161,23 @@ python3 -m src.durable_coding adjudicate --broker "$BROKER" --execution "$EXECUT
 
 The first command requires `VERIFIED EXTERNAL PROVIDER BILLING <digest>` on the
 terminal. It validates completeness, the retained artifact hash, reservation,
-execution and any locally observed provider IDs. The operator independently
+execution and any locally observed provider IDs. Billed usage must reproduce
+the final amount under the reviewed pricing, including cache-write and
+long-context rates; unsupported adjustments or tiers remain unresolved. The operator independently
 verifies authenticity, final usage, pricing and amount in the provider channel;
 the controller cannot authenticate an exported support document itself.
 The amount must fit the reservation or the hold remains unresolved for review.
-The second command separately requires `CONFIRM PROVIDER TERMINAL NO REPLAY
+The second command separately requires `CONFIRM PROVIDER TERMINAL AND ALL QA STOPPED NO REPLAY
 <digest>`, checks the final outcome against settled accounting and closes the
 attempt without replay authority. The same process closes legacy v3 consumed
 attempts using an explicit v4 closure record, leaving every original record unchanged. A crash
 with no reservation requires provider-confirmed no-charge/terminal evidence
-before closing its durable dispatch intent. STOP remains in force throughout;
+before closing its durable dispatch intent. If the controller stopped in
+`qa_running` (or a legacy dispatch has no terminal failure diagnostic), also
+provide `--qa-termination /protected/retained-local-termination-evidence`. The
+operator must independently establish that the old controller and every QA
+process/descendant have stopped; a provider receipt does not prove local process
+termination. Its digest is recorded with closure. STOP remains in force throughout;
 inspection and accounting review do not clear it, and no closure grants spending.
 
 The older budget digest-only reconciliation command remains a legacy trusted
