@@ -139,6 +139,47 @@ class Budget:
             self.event(db, 'operator-reconciled' if evidence else 'settled', ident,
                        dict(actual_nano_usd=actual, evidence=evidence, receipt=receipt))
 
+    def _undispatched(self, db, ident, authority, execution):
+        """Absence of intent is authoritative only for the new bound controller."""
+        authorities = [e.decode(r[0]) for r in db.execute(
+            "SELECT evidence FROM events WHERE kind='coding_authority_bound'")]
+        e.require(authorities == [dict(authority=authority)], 'Bound coding authority required')
+        row = db.execute('SELECT * FROM requests WHERE id=?', (ident,)).fetchone()
+        if row is None: return None
+        history = [dict(r) for r in db.execute('SELECT * FROM events WHERE request=? ORDER BY seq',(ident,))]
+        reservations = [e.decode(r['evidence']) for r in history if r['kind'] == 'reserved']
+        e.require(len(reservations) == 1, 'Original reservation evidence required')
+        binding = (reservations[0].get('provenance') or {}).get('binding') or {}
+        e.require(binding.get('broker_authority') == authority and binding.get('execution') == execution and
+                  binding.get('receiver') in {'live-coding-only','synthetic-coding-only'},
+                  'Legacy or unrelated reservations cannot use local no-dispatch recovery')
+        kinds = {r['kind'] for r in history}
+        failures = [e.decode(r['evidence']) for r in history if r['kind'] == 'request_failed_hold_retained']
+        e.require('response_observed_untrusted' not in kinds and
+                  ('dispatch_intent' not in kinds or failures and failures[-1]['dispatch'] == 'not_attempted'),
+                  'Provider dispatch may have occurred; external billing evidence required')
+        if row['actual'] is not None:
+            receipt = e.decode(row['receipt'])
+            e.require(row['actual'] == 0 and receipt.get('status') == 'released-before-dispatch',
+                      'Accounting is already terminal')
+        return dict(row)
+
+    def inspect_undispatched(self, ident, authority, execution):
+        with self.tx() as db: return self._undispatched(db, ident, authority, execution)
+
+    def release_undispatched(self, ident, authority, execution, evidence):
+        """Operator-reviewed reservation cancellation, never inferred from validation."""
+        e.require(e.sha(evidence), 'Retained local termination evidence digest required')
+        with self.tx(True) as db:
+            row = self._undispatched(db, ident, authority, execution)
+            if row is None: return None
+            if row['actual'] is not None: return e.decode(row['receipt'])  # Cross-ledger crash completion only.
+            receipt = dict(status='released-before-dispatch', execution=execution,
+                           authority=authority, evidence=evidence, retry=False)
+            db.execute('UPDATE requests SET actual=0,receipt=? WHERE id=?',(e.canonical(receipt),ident))
+            self.event(db,'reservation_released_before_dispatch',ident,receipt)
+        return receipt
+
     def record_dispatch(self, ident):
         """Commit once before transport; a crash leaves an uncertain reservation."""
         with self.tx(True) as db:

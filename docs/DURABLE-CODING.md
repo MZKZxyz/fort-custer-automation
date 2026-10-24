@@ -95,7 +95,7 @@ verifies that approval and records it. Neither command can mint paid authority.
 Task events are append-only:
 `prepared → approved → queued → authorized → dispatched → response_received →
 accounting_settled → qa_running → validated`, with `failed`, `blocked`,
-`cancelled` and explicit `adjudicated` closure transitions. A durable claim event
+`cancelled` and explicit `adjudicated`/`undispatched_closed` closure transitions. A durable claim event
 binds paid authorization before `authorized`. QA check events do not advance
 state. `dispatched` means committed intent, so a crash at that boundary is fenced
 conservatively even if no bytes were actually sent.
@@ -170,9 +170,29 @@ The amount must fit the reservation or the hold remains unresolved for review.
 The second command separately requires `CONFIRM PROVIDER TERMINAL AND ALL QA STOPPED NO REPLAY
 <digest>`, checks the final outcome against settled accounting and closes the
 attempt without replay authority. The same process closes legacy v3 consumed
-attempts using an explicit v4 closure record, leaving every original record unchanged. A crash
-with no reservation requires provider-confirmed no-charge/terminal evidence
-before closing its durable dispatch intent. If the controller stopped in
+attempts using an explicit v4 closure record, leaving every original record unchanged. New v4 work proven never dispatched has a separate pre-dispatch closure:
+
+```sh
+python3 -m src.durable_coding close-before-dispatch --broker "$BROKER" --execution "$EXECUTION" --evidence "$LOCAL_TERMINATION_ARTIFACT"
+```
+
+Review retained supervisor/administrator evidence that the old controller and all
+helpers/descendants terminated before provider dispatch. The command requires
+`CONFIRM NO PROVIDER DISPATCH AND ALL PROCESSES TERMINATED <digest>` on the
+terminal, checks the execution and shared budget again atomically with closure,
+and preserves the consumed grant. With no reservation, accounting is unchanged.
+For a **new v4 reservation**, absence of the durable transport marker, or a trusted
+`not_attempted` diagnostic with no response observation, proves the provider was
+not called. After terminal review this cancels that reservation, preserves its
+original maximum, and appends `reservation_released_before_dispatch`; it records
+no provider usage or fabricated billing receipt. The budget fences late transport
+startup after cancellation. A cross-ledger crash can complete the same closure
+without another financial change.
+
+Legacy reservations, received responses and uncertain dispatches reject this
+route. Absence of a marker in an old ledger is never reinterpreted as no dispatch;
+the historical $5.31 hold cannot be released this way. A missing provider ID or a
+failed response validation alone is not proof of no dispatch. If the controller stopped in
 `qa_running` (or a legacy dispatch has no terminal failure diagnostic), also
 provide `--qa-termination /protected/retained-local-termination-evidence`. The
 operator must independently establish that the old controller and every QA

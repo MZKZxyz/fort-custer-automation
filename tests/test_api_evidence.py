@@ -31,6 +31,37 @@ class EvidenceTests(unittest.TestCase):
             self.assertEqual(budget.status()['unresolved_nano_usd'],100)
             with self.assertRaises(ValueError): budget.reserve('c'*32,'b'*64,1)
 
+    def test_local_release_needs_new_controller_provenance_and_fences_late_transport(self):
+        with tempfile.TemporaryDirectory() as root:
+            budget = Budget(Path(root).resolve()/'budget.sqlite'); budget.initialize()
+            budget.bind_coding_authority('a'*64)
+            binding = dict(receiver='synthetic-coding-only',broker_authority='a'*64,execution='e'*32)
+            budget.reserve('b'*32,'c'*64,100,provenance=dict(binding=binding))
+            result = budget.release_undispatched('b'*32,'a'*64,'e'*32,'f'*64)
+            self.assertEqual(result['status'],'released-before-dispatch')
+            self.assertEqual(budget.release_undispatched('b'*32,'a'*64,'e'*32,'f'*64),result)
+            self.assertEqual(sum(x['kind']=='reservation_released_before_dispatch' for x in budget.audit()),1)
+            self.assertNotIn('usage',result)
+            self.assertEqual(budget.status()['unresolved_requests'],0)
+            with self.assertRaises(ValueError): budget.record_dispatch('b'*32)
+            # An old record lacking v4 provenance is not evidence of no dispatch.
+            budget.reserve('d'*32,'c'*64,100)
+            with self.assertRaises(ValueError): budget.release_undispatched('d'*32,'a'*64,'e'*32,'f'*64)
+            self.assertEqual(budget.status()['unresolved_nano_usd'],100)
+
+    def test_local_release_requires_trusted_not_attempted_after_dispatch_intent(self):
+        with tempfile.TemporaryDirectory() as root:
+            budget = Budget(Path(root).resolve()/'budget.sqlite'); budget.initialize()
+            budget.bind_coding_authority('a'*64)
+            binding = dict(receiver='synthetic-coding-only',broker_authority='a'*64,execution='e'*32)
+            budget.reserve('b'*32,'c'*64,100,provenance=dict(binding=binding))
+            budget.record_dispatch('b'*32)
+            with self.assertRaises(ValueError): budget.release_undispatched('b'*32,'a'*64,'e'*32,'f'*64)
+            budget.record_failure('b'*32,api.diagnostic('connect_failed','connect','not_attempted'))
+            budget.release_undispatched('b'*32,'a'*64,'e'*32,'f'*64)
+            self.assertEqual(budget.status()['unresolved_requests'],0)
+            self.assertEqual(budget.audit()[-1]['kind'],'reservation_released_before_dispatch')
+
     def test_budget_broker_binding_cannot_change_or_use_legacy_receiver(self):
         with tempfile.TemporaryDirectory() as root:
             budget = Budget(Path(root).resolve()/'budget.sqlite'); budget.initialize()

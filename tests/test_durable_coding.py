@@ -131,8 +131,12 @@ class DurableTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.execute(claim)
         with self.assertRaises(ValueError): self.authorize(self.second,'regression')
         self.assertEqual(self.transport.calls,[])
-        path,artifact = self.external(claim,0,'confirmed-no-charge')
-        with self.terminal(): self.broker.adjudicate(claim['execution'],path,artifact)
+        termination = self.f.root/'pre-reservation-termination.txt'
+        termination.write_text('SYNTHETIC supervisor evidence: original controller and all helpers terminated')
+        termination.chmod(0o600)
+        with self.terminal(): self.broker.close_before_dispatch(claim['execution'],termination)
+        self.assertEqual(self.budget.status()['unresolved_requests'],0)
+        self.assertEqual(len([x for x in self.budget.audit() if x['kind']=='operator-reconciled']),0)
         self.second_success()
 
     def test_restart_after_provider_dispatch_keeps_hold_without_redispatch(self):
@@ -145,6 +149,9 @@ class DurableTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.authorize(self.second,'regression')
         self.assertEqual(len(self.transport.calls),1)
         self.assertEqual(self.budget.status()['unresolved_nano_usd'],profile.MAXIMUM_CHARGE)
+        proof = self.f.root/'cannot-release-reservation.txt'
+        proof.write_text('SYNTHETIC local process evidence is insufficient for billing'); proof.chmod(0o600)
+        with self.terminal(), self.assertRaises(ValueError): self.broker.close_before_dispatch(claim['execution'],proof)
 
     def test_crash_during_qa_needs_local_termination_proof(self):
         claim = self.authorize(); self.broker.admit(claim,'operator')
@@ -161,6 +168,24 @@ class DurableTests(unittest.TestCase):
         termination.write_text('SYNTHETIC administrator proof: controller and QA descendants stopped')
         termination.chmod(0o600)
         with self.terminal(): self.broker.adjudicate(claim['execution'],path,artifact,termination)
+        self.second_success()
+
+    def test_known_pre_dispatch_failure_releases_only_new_reservation(self):
+        claim = self.authorize()
+        def fail_connect(): raise api.APIUnavailable('connect_failed','connect','not_attempted')
+        self.transport.callback = fail_connect
+        with self.assertRaises(ValueError): self.execute(claim)
+        self.assertEqual(self.budget.status()['unresolved_nano_usd'],profile.MAXIMUM_CHARGE)
+        termination = self.f.root/'connect-failed-termination.txt'
+        termination.write_text('SYNTHETIC administrator evidence: all original helpers terminated')
+        termination.chmod(0o600)
+        with self.terminal(): self.broker.close_before_dispatch(claim['execution'],termination)
+        self.assertEqual(self.budget.status()['unresolved_requests'],0)
+        self.assertEqual(self.budget.audit()[-1]['kind'],'reservation_released_before_dispatch')
+        with self.terminal(), self.assertRaises(ValueError):
+            self.broker.close_before_dispatch(claim['execution'],termination)
+        with self.assertRaises(ValueError): self.execute(claim)
+        self.transport.callback = lambda:None
         self.second_success()
 
     def test_unknown_response_keeps_billing_fenced_across_new_broker(self):

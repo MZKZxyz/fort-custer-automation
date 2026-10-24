@@ -27,6 +27,7 @@ TRANSITIONS = {
     'qa_running': {'accounting_settled'}, 'validated': {'qa_running'},
     'failed': {'dispatched', 'response_received', 'accounting_settled', 'qa_running'},
     'blocked': {'dispatched', 'response_received', 'accounting_settled', 'qa_running'},
+    'undispatched_closed': {'dispatched','blocked','failed'},
     'adjudicated': {'blocked', 'dispatched', 'response_received', 'accounting_settled', 'qa_running'},
     'cancelled': {'prepared', 'approved', 'queued', 'authorized'},
     'claim': {'queued'}, 'qa_check': {'qa_running'},
@@ -85,6 +86,7 @@ class DurableBroker(CodingBroker):
                       for r in legacy.values()), 'Legacy API budget binding changed')
         review = dict(schema=SCHEMA, config=self.config_digest, api_config=e.digest(config),
                       budget_extension='api-budget-v1-append-only-coding-binding',
+                      pre_dispatch_recovery='v4-proven-not-dispatched-reservation-cancellation',
                       budget_file=str(budget.path), maximum_jobs=maximum_jobs,
                       legacy_digest=e.digest(legacy), legacy_count=len(legacy),
                       operator=pwd.getpwuid(os.getuid()).pw_name, at=self.clock())
@@ -156,7 +158,7 @@ class DurableBroker(CodingBroker):
                           d.get('spec_digest') == row['job']['spec_digest'], 'Missing independent task approval')
             elif state == 'authorized':
                 e.require(row['claim'] is not None, 'Missing paid authorization')
-            elif state == 'adjudicated':
+            elif state in {'adjudicated','undispatched_closed'}:
                 e.require(e.sha(d.get('evidence')) and d.get('retry') is False, 'Missing external adjudication')
             elif state in {'failed','blocked'}:
                 from src.coding_diagnostics import validate
@@ -180,7 +182,7 @@ class DurableBroker(CodingBroker):
                           all(q['code'] == 0 and q['reason'] is None for q in d['evidence']['checks']),
                           'Incomplete trusted QA')
             row['events'].append(dict(at=event['at'], state=state, document=d))
-            if state not in {'claim', 'qa_check'}: row['state'] = 'failed' if state == 'adjudicated' else state
+            if state not in {'claim', 'qa_check'}: row['state'] = 'failed' if state in {'adjudicated','undispatched_closed'} else state
         e.require(all(r['state'] is not None for r in rows.values()), 'Missing prepared event')
         e.require(sum(r['state'] in {'authorized','dispatched','response_received','accounting_settled','qa_running','blocked'}
                       for r in rows.values()) <= 1, 'Sequential queue violated')
@@ -365,6 +367,42 @@ class DurableBroker(CodingBroker):
             self._append(db, execution, 'cancelled')
         return dict(execution=execution, state='cancelled', retry=False)
 
+    def close_before_dispatch(self, execution, termination_file):
+        """Close new-controller work proven never dispatched; cancel only its reservation.
+
+        A zero encumbrance here means a cancelled reservation, not provider usage.
+        The durable pre-transport marker and trusted not-attempted diagnostics
+        distinguish this from schema rejection or an uncertain provider outcome.
+        """
+        import hashlib
+        proof = e.regular(termination_file)
+        e.require(0 < proof.stat().st_size <= 1024*1024, 'Retained process termination proof required')
+        digest = hashlib.sha256(proof.read_bytes()).hexdigest()
+        with self.tx() as db:
+            row = self._rows(db)[execution]
+            e.require(row['state'] in {'dispatched','blocked','failed'}, 'Only pre-provider work can close')
+            claim = row['claim']; reviewed_row = e.digest(row)
+        billing = self.billing(claim)
+        reservation = self._budget().inspect_undispatched(billing['request_id'], self.authority, execution)
+        e.require(not any(v['state'] == 'undispatched_closed' for v in row['events']) or
+                  reservation is not None and reservation['actual'] is None, 'Closure already consumed')
+        review = dict(execution=execution, request_id=billing['request_id'], evidence=digest,
+                      proof='new-controller-proven-not-dispatched',
+                      reservation=billing['state'], retry=False,
+                      operator=pwd.getpwuid(os.getuid()).pw_name)
+        print(e.canonical(review))
+        challenge = 'CONFIRM NO PROVIDER DISPATCH AND ALL PROCESSES TERMINATED '+e.digest(review)
+        e.require(terminal_challenge(challenge) == challenge, 'Explicit local termination review required')
+        e.require(hashlib.sha256(e.regular(termination_file).read_bytes()).hexdigest() == digest,
+                  'Termination evidence changed during review')
+        with self.tx(True) as db:
+            row = self._rows(db)[execution]
+            e.require(row['state'] in {'dispatched','blocked','failed'} and e.digest(row) == reviewed_row,
+                      'Execution advanced during termination review')
+            self._budget().release_undispatched(billing['request_id'], self.authority, execution, digest)
+            self._append(db, execution, 'undispatched_closed', review)
+        return review
+
     def adjudicate(self, execution, evidence_file, artifact_file, qa_termination_file=None):
         """Human reviews retained external billing AND provider completion evidence."""
         raw = e.regular(evidence_file).read_bytes()
@@ -466,7 +504,7 @@ class DurableBroker(CodingBroker):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['upgrade','prepare','approve','queue','authorize','dispatch','list','inspect','enqueue','cancel','adjudicate'])
+    parser.add_argument('command', choices=['upgrade','prepare','approve','queue','authorize','dispatch','list','inspect','enqueue','cancel','adjudicate','close-before-dispatch'])
     parser.add_argument('--broker', required=True)
     parser.add_argument('--policy'); parser.add_argument('--task'); parser.add_argument('--execution')
     parser.add_argument('--qa-termination'); parser.add_argument('--artifact'); parser.add_argument('--evidence'); parser.add_argument('--maximum-jobs', type=int, default=1000)
@@ -487,6 +525,7 @@ def main():
             if args.execution: result['tasks'] = {args.execution:result['tasks'][args.execution]}
             if args.command == 'list': result = {k:result[k] for k in ('schema','summary','stop','budget')}
         elif args.command == 'cancel': result = broker.cancel(args.execution)
+        elif args.command == 'close-before-dispatch': result = broker.close_before_dispatch(args.execution,args.evidence)
         elif args.command == 'adjudicate': result = broker.adjudicate(args.execution, args.evidence, args.artifact, args.qa_termination)
         else:
             from src.coding_canary import run
