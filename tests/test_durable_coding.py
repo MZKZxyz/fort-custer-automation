@@ -275,6 +275,23 @@ class LegacyUpgradeTests(unittest.TestCase):
         with self.assertRaises(ValueError): broker.enqueue(setup.f.path,claim['execution'],'comment')
         with self.assertRaises(ValueError): canary.run(broker,claim,'operator',setup.controller)
         self.assertEqual(setup.budget.status()['unresolved_nano_usd'],5310000000)
+        # Only synthetic external evidence closes this disposable legacy hold.
+        helper = DurableTests()
+        helper.f, helper.budget, helper.broker = setup.f, setup.budget, broker
+        path,artifact = helper.external(claim)
+        with DurableTests.terminal():
+            reconcile(setup.budget,path,artifact)
+            broker.adjudicate(claim['execution'],path,artifact)
+        self.assertEqual(broker.inspect()['legacy'],before)
+        self.assertIn(claim['execution'],broker.inspect()['legacy_closures'])
+        prepared = broker.prepare(setup.f.path,'comment')
+        with DurableTests.terminal():
+            broker.approve(prepared['execution'])
+            fresh = broker.authorize(setup.f.path,prepared['execution'],'comment','operator')
+        setup.transport.raw = fixtures.envelope()
+        canary.run(broker,fresh,'operator',setup.controller)
+        self.assertNotEqual(fresh['execution'],claim['execution'])
+        self.assertEqual(broker.inspect()['tasks'][fresh['execution']]['state'],'validated')
 
 
 if __name__ == '__main__': unittest.main()
