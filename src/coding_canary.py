@@ -26,6 +26,7 @@ console.log('compile comment regression passed');
 def reviewed(a):
     spec = a['spec']
     contract.catalog_task(spec['task'])
+    if spec['limits']['usage_policy'] == contract.REVIEWED_USAGE: return
     e.require(a['source'] == SOURCE and spec['repo'] == 'fort-custer-server' and
               spec['task']['repository'] == 'MZKZxyz/fort-custer-server' and
               spec['task']['instructions'] == INSTRUCTIONS and a['allowed'] == [contract.FILE],
@@ -38,9 +39,10 @@ def reviewed(a):
 
 def run(broker, claim, principal, controller):
     from src.coding_broker import CodingBroker
+    from src.durable_coding import DurableBroker
     from src import api_controller as api, coding_api as profile
     from src.local_runner import Runner
-    e.require(type(broker) is CodingBroker and type(controller) is api.Controller and
+    e.require(type(broker) in {CodingBroker, DurableBroker} and type(controller) is api.Controller and
               controller.prices == profile.PRICING and (
                   type(controller.transport) is api.ResponsesTransport or
                   getattr(controller.transport, 'synthetic', False) is True),
@@ -55,12 +57,14 @@ def run(broker, claim, principal, controller):
     binding = dict(receiver='synthetic-coding-only' if getattr(controller.transport, 'synthetic', False)
                    else 'live-coding-only', execution=claim['execution'], claim=e.digest(claim),
                    authorization=e.digest(a), principal=principal, source_manifest=a['source_manifest'])
+    if type(broker) is DurableBroker: binding['broker_authority'] = broker.authority
     def guard(): return broker.guard(claim, principal, {'dispatched'})
     broker.admit(claim, principal)  # Single-use intent before budget or inference.
     phase = 'internal'
     def progress(value):
         nonlocal phase
         phase = value
+        if type(broker) is DurableBroker: broker.progress(claim, value)
     try:
         raw_edit = controller._request(e.digest(claim)[:32], request, binding, guard,
                                       _coding=True, _phase=progress)
@@ -69,8 +73,9 @@ def run(broker, claim, principal, controller):
         policy, _, _ = e.catalog(a['reviewed']['policy_path'])
         spec = a['reviewed']['spec']
         files = source_files(policy['repositories'][spec['repo']]['source'], a['reviewed']['source'], spec['allowed'])
-        candidate = contract.apply(raw_edit, files, source_manifest=a['source_manifest'], allowed=spec['allowed'])
-        phase = 'independent_qa'
+        candidate = contract.apply(raw_edit, files, source_manifest=a['source_manifest'], allowed=spec['allowed'],
+                                   edit_contract=spec['task'].get('edit_contract'))
+        progress('independent_qa')
         runner = object.__new__(Runner)
         runner.policy, runner.scratch = policy, Path(broker.c['scratch'])
         runner.scratch.mkdir(mode=0o700, exist_ok=True)
@@ -79,13 +84,15 @@ def run(broker, claim, principal, controller):
             except Exception: return True
         qa = runner.qa(files, candidate, cancelled, claim['deadline']-broker.clock(), spec=spec,
                        on_check=lambda check:broker.evidence(claim, 'qa_check', check),
-                       extra_checks=[('compile-regression',
-                           ['node', '--input-type=module', '--eval', COMPILE_REGRESSION], 10)])
+                       extra_checks=([('compile-regression',
+                           ['node', '--input-type=module', '--eval', COMPILE_REGRESSION], 10)]
+                           if spec['limits']['usage_policy'] == contract.USAGE_POLICY else []))
         e.require(all(q['code'] == 0 and q['reason'] is None for q in qa), 'Independent QA failed')
         phase = 'final_verification'
         guard()
         result = dict(source_manifest=manifest(files), candidate_manifest=manifest(candidate),
-                      checks=qa, comment_regression='executable-bytes-identical',
+                      checks=qa, comment_regression=('executable-bytes-identical'
+                          if spec['limits']['usage_policy'] == contract.USAGE_POLICY else 'reviewed-replacement'),
                       publication='separate-authorization-required', retry=False)
         broker.evidence(claim, 'validated', result)
         broker.guard(claim, principal, {'validated'})

@@ -11,7 +11,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 30
     env:
       # Avoid macOS /var and /tmp symlink ancestors in protected-store tests.
       TMPDIR: ${{ matrix.os == 'macos-latest' && '/private/tmp' || '/tmp' }}
@@ -54,6 +54,8 @@ jobs:
           test -n "$FC_CODEX_PROBE_BINARY"
           export FC_CODEX_PROBE_BINARY
           python -m unittest discover -s tests -p test_codex_boundary.py -v
-      - name: Full regression suite
-        if: always() && runner.os == 'Linux'
-        run: python -m unittest discover -s tests -q
+      - name: Full regression suite (both platforms)
+        if: always()
+        run: |
+          make lint test
+          python -O -m unittest discover -s tests -q
