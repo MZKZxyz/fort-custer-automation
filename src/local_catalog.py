@@ -72,8 +72,10 @@ def resolve(policy, task_id, *, observation_only=False):
     if (not isinstance(limits, dict) or set(limits) != {'timeout_seconds', 'api_spend_cents', 'usage_policy'} or
         type(limits['timeout_seconds']) is not int or
         not 0 < limits['timeout_seconds'] <= policy['timeout_seconds'] or
-        type(limits['api_spend_cents']) is not int or limits['api_spend_cents'] != 0 or
-        limits['usage_policy'] != 'subscription-no-paid-refills'):
+        type(limits['api_spend_cents']) is not int):
+        raise ValueError('Unsupported task resource or spending limits')
+    if limits['usage_policy'] != 'supervised-sol-low-one-request' and (
+        limits['api_spend_cents'] != 0 or limits['usage_policy'] != 'subscription-no-paid-refills'):
         raise ValueError('Unsupported task resource or spending limits')
     files = source_files(p['source'], entry['source'], allowed)
     if entry['input_hash'] != manifest(files):
@@ -97,6 +99,9 @@ def resolve(policy, task_id, *, observation_only=False):
             type(check['timeout_seconds']) is not int or
             not 0 < check['timeout_seconds'] <= limits['timeout_seconds']):
             raise ValueError('QA command not allowlisted')
+    if limits['usage_policy'] == 'supervised-sol-low-one-request':
+        from src.coding_contract import catalog_task
+        catalog_task(entry)
     spec = dict(protocol=PROTOCOL, task_id=task_id, task=entry, mode=MODE,
                 repo=repo, issue=number, issue_snapshot=issue, branch=p['branch'],
                 source=entry['source'],

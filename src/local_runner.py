@@ -354,6 +354,8 @@ class Runner:
         block_live_dispatch()
         with self.tx() as db:
             r = self.read(db, run); files = self.check(r)
+            if r['spec'].get('limits', {}).get('usage_policy') == 'supervised-sol-low-one-request':
+                raise ValueError('Separate coding API admission required; no CLI fallback')
             if not self.policy['enabled']: raise ValueError('Local mode disabled')
             if r['state'] != 'approved': raise ValueError('Task already claimed or unapproved')
             if any(json.loads(row[0])['state'] == 'running' for row in db.execute('SELECT document FROM runs')):
@@ -395,7 +397,7 @@ class Runner:
         with self.tx() as db: self.save(db, r)
         return r
 
-    def qa(self, files, candidate, stopped, remaining, spec=None):
+    def qa(self, files, candidate, stopped, remaining, spec=None, on_check=None, extra_checks=()):
         with tempfile.TemporaryDirectory(prefix='qa-', dir=self.scratch) as work:
             root = Path(work); materialize(files, root)
             git(root, 'init', '-q')
@@ -419,6 +421,7 @@ class Runner:
             end = time.monotonic()+remaining
             checks = ([(c['name'], c['argv'], c['timeout_seconds']) for c in spec['checks']]
                       if spec else [(label, command, 2400) for label, command in CHECKS])
+            checks.extend(extra_checks)  # Trusted controller only; never supplied by a task/model.
             commands = [('diff', ['/usr/bin/git', 'diff', '--check', 'HEAD^', 'HEAD'], 30), *checks]
             for label, command, check_timeout in commands:
                 left = end-time.monotonic()
@@ -427,6 +430,7 @@ class Runner:
                 out = supervise(command, root, environment(), timeout=min(left, check_timeout), cancelled=stopped)
                 report.append(dict(name=label, command=command, code=out['code'], reason=out['reason'],
                     stdout=out['stdout'].decode(errors='replace'), stderr=out['stderr'].decode(errors='replace')))
+                if on_check is not None: on_check(report[-1])
             # QA must not create even ignored artifacts or mutate its inputs.
             after = {k:v for k,v in snapshot(root).items() if not k.startswith('.git/')}
             if manifest(after) != manifest(candidate): raise ValueError('QA modified candidate')
