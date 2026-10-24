@@ -1,0 +1,41 @@
+{
+  "schema": "coding-canary-real-response-v1",
+  "provenance": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "low",
+    "response_status": "completed",
+    "source_commit": "c4f480abb309a7a4d141b20ab462552a868ef0e3",
+    "source_file": "tools/maze-analyzer/solver.js",
+    "capture_sha256": "3392c038f322382c040ea41e922cc10314131c83f6d413e50ad61b44b0e354a3"
+  },
+  "request_parameters": {
+    "model": "gpt-6.1-sol",
+    "reasoning": {
+      "effort": "low"
+    },
+    "max_output_tokens": 4000,
+    "store": false,
+    "background": false,
+    "stream": false,
+    "tools": [],
+    "tool_choice": "none",
+    "parallel_tool_calls": false,
+    "truncation": "disabled"
+  },
+  "model_output": {
+    "old": "export function compile(grid) {",
+    "new": "// Validate the grid and compile its cells, endpoints, items, fires, and bit masks.\nexport function compile(grid) {"
+  },
+  "usage": {
+    "input_tokens": 517,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 43,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 560
+  }
+}
