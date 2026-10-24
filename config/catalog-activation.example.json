@@ -1,0 +1,50 @@
+{
+  "mode": "local_codex_development",
+  "enabled": true,
+  "trusted_local_tasks_only": true,
+  "scratch_reviewed_no_secrets": true,
+  "timeout_seconds": 60,
+  "state": "/absolute/catalog/state",
+  "scratch": "/absolute/catalog-coding-scratch",
+  "cli": "/absolute/trusted/bin/codex",
+  "cli_version": "0.163.0",
+  "cli_sha256": "REPLACE_WITH_REVIEWED_BINARY_SHA256",
+  "operator_home": "/absolute/dedicated-codex-auth-home",
+  "node": "/absolute/trusted/bin/node",
+  "node_sha256": "REPLACE_WITH_REVIEWED_NODE_BINARY_SHA256",
+  "repositories": {
+    "fort-custer-server": {
+      "identity": "MZKZxyz/fort-custer-server",
+      "source": "/absolute/trusted/local/fort-custer-server",
+      "branch": "main",
+      "sha": "REPLACE_WITH_REVIEWED_40_CHARACTER_SOURCE_SHA",
+      "reviewed_issues": [3]
+    }
+  },
+  "catalog": {
+    "schema": 1,
+    "tasks": {
+      "solver-comment-review": {
+        "repo": "fort-custer-server",
+        "repository": "MZKZxyz/fort-custer-server",
+        "source": "REPLACE_WITH_SAME_REVIEWED_SOURCE_SHA",
+        "input_hash": "UNREVIEWED",
+        "issue": 3,
+        "issue_snapshot": {
+          "number": 3,
+          "state": "open",
+          "html_url": "https://github.com/MZKZxyz/fort-custer-server/issues/3"
+        },
+        "allowed": ["tools/maze-analyzer/solver.js"],
+        "instructions": "Add one explanatory comment above compile describing its existing behavior. Preserve all executable code and behavior.",
+        "checks": [
+          {"name": "syntax", "argv": ["node", "--check", "tools/maze-analyzer/solver.js"], "timeout_seconds": 10},
+          {"name": "tests", "argv": ["node", "--test", "test/analyzer.test.js"], "timeout_seconds": 30}
+        ],
+        "limits": {"timeout_seconds": 60, "api_spend_cents": 0, "usage_policy": "subscription-no-paid-refills"},
+        "mode": "local_codex_development",
+        "approval": "controlling-terminal"
+      }
+    }
+  }
+}
