@@ -107,7 +107,7 @@ class ProfileTests(unittest.TestCase):
                 self.calls+=1
                 return fixtures.envelope(status='incomplete',incomplete_details={'reason':'max_output_tokens'})
         with tempfile.TemporaryDirectory() as temp:
-            budget=Budget(Path(temp)/'budget.sqlite');budget.initialize()
+            budget=Budget(Path(temp).resolve(strict=True)/'budget.sqlite');budget.initialize()
             transport=Transport(); controller=api.Controller(budget,transport,profile.PRICING)
             for _ in range(2):
                 with self.assertRaises(ValueError):

@@ -16,7 +16,7 @@ from readiness import audit, GATES
 class SubscriptionBoundaryTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
-        self.path = Path(self.tmp.name)/'offline.db'
+        self.path = Path(self.tmp.name).resolve(strict=True)/'offline.db'
         self.now = 1000
         self.oauth, self.server = FakeOAuth(), FakeAppServer()
         self.h = SubscriptionHarness(self.path, self.oauth, self.server, lambda:self.now, initialize=True)
@@ -91,7 +91,7 @@ class SubscriptionBoundaryTests(unittest.TestCase):
     def test_ambiguous_error_malicious_tools_and_exposure_are_stops(self):
         for outcome in ['unknown','tool','exposure']:
             with self.subTest(outcome=outcome):
-                path=Path(self.tmp.name)/(outcome+'.db');server=FakeAppServer(outcome)
+                path=Path(self.tmp.name).resolve(strict=True)/(outcome+'.db');server=FakeAppServer(outcome)
                 h=SubscriptionHarness(path,self.oauth,server,lambda:self.now,initialize=True)
                 h.approve('a'*32,'fixture-vsock:1','fixture/server#3','fixture/server','b'*40,3400)
                 result=h.request('fixture-vsock:1',self.request)
@@ -113,7 +113,7 @@ class SubscriptionBoundaryTests(unittest.TestCase):
 
     def test_inflight_cancel_expiry_and_revocation_cannot_report_success(self):
         for action in ['cancel','expiry','revoke']:
-            path=Path(self.tmp.name)/(action+'.db');server=FakeAppServer()
+            path=Path(self.tmp.name).resolve(strict=True)/(action+'.db');server=FakeAppServer()
             oauth=FakeOAuth();h=SubscriptionHarness(path,oauth,server,lambda:self.now,initialize=True)
             h.approve('a'*32,'fixture-vsock:1','fixture/server#3','fixture/server','b'*40,3400)
             original=server.turn
@@ -176,7 +176,7 @@ class ProtocolAndAssetTests(unittest.TestCase):
     def test_asset_root_symlink_is_rejected(self):
         from server_qa import verify_assets
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d);(root/'link').symlink_to(root,target_is_directory=True)
+            root=Path(d).resolve(strict=True);(root/'link').symlink_to(root,target_is_directory=True)
             with self.assertRaises(ValueError):verify_assets(root/'link',{})
 
 

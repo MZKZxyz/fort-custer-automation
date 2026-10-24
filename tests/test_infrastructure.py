@@ -75,7 +75,7 @@ class InfrastructureTests(unittest.TestCase):
   fake=Fake();qa=ContainerQA(IMAGE,runtime=fake)
   with tempfile.TemporaryDirectory() as d:
    Path(d,'calc.py').write_text('pass')
-   result=qa.run_exact(Path(d),('policy','fixture'),'a'*40,'b'*40)
+   result=qa.run_exact(Path(d).resolve(strict=True),('policy','fixture'),'a'*40,'b'*40)
   self.assertEqual(result['status'],'passed')
   self.assertEqual(fake.request['candidate'],'b'*40)
   self.assertEqual(result['artifact_sha256'],artifact_digest({'calc.py':'pass'},{'calc.py':0o644}))
@@ -88,23 +88,23 @@ class InfrastructureTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    for change in ({'artifact':'forged'},{'candidate':'c'*40},{'policy':'injected'}):
     qa=ContainerQA(IMAGE,runtime=Fake(change))
-    with self.assertRaises(ValueError):qa.run_exact(Path(d),('policy','fixture'),'a'*40,'b'*40)
+    with self.assertRaises(ValueError):qa.run_exact(Path(d).resolve(strict=True),('policy','fixture'),'a'*40,'b'*40)
    class Failed:
     def run(self,role,image,request):return dict(request,tests=[{'status':'passed','exit_code':1}])
-   self.assertEqual(ContainerQA(IMAGE,runtime=Failed()).run(Path(d),('policy','fixture'))['status'],'failed')
+   self.assertEqual(ContainerQA(IMAGE,runtime=Failed()).run(Path(d).resolve(strict=True),('policy','fixture'))['status'],'failed')
 
  def test_export_preserves_crlf_and_executable_mode(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d,'script.sh');p.write_bytes(b'echo fixture\r\n');p.chmod(0o755)
-   self.assertEqual(source_files(Path(d)),{'script.sh':'echo fixture\r\n'})
-   self.assertEqual(source_modes(Path(d)),{'script.sh':0o755})
+   self.assertEqual(source_files(Path(d).resolve(strict=True)),{'script.sh':'echo fixture\r\n'})
+   self.assertEqual(source_modes(Path(d).resolve(strict=True)),{'script.sh':0o755})
 
  def test_private_files_and_links_not_transported(self):
   with tempfile.TemporaryDirectory() as d:
    Path(d,'.env').write_text('synthetic')
-   with self.assertRaises(ValueError):source_files(Path(d))
+   with self.assertRaises(ValueError):source_files(Path(d).resolve(strict=True))
    Path(d,'.env').unlink();Path(d,'link').symlink_to('/etc/passwd')
-   with self.assertRaises(ValueError):source_files(Path(d))
+   with self.assertRaises(ValueError):source_files(Path(d).resolve(strict=True))
 
  def test_short_lived_scoped_app_contract(self):
   repo='MZKZxyz/fort-custer-server'
@@ -140,7 +140,7 @@ class InfrastructureTests(unittest.TestCase):
   from verify_assets import verify
   import hashlib
   with tempfile.TemporaryDirectory() as d:
-   root=Path(d)
+   root=Path(d).resolve(strict=True)
    for folder in ('npm-cache','mongodb','browsers'):(root/folder).mkdir()
    asset=root/'mongodb/mongod';asset.write_text('synthetic')
    manifest={'mongodb/mongod':hashlib.sha256(asset.read_bytes()).hexdigest()}

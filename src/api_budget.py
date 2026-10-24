@@ -83,12 +83,39 @@ class Budget:
         with self.tx() as db:
             return [dict(r) for r in db.execute('SELECT * FROM events ORDER BY seq')]
 
+    def bind_coding_authority(self, authority):
+        """Reviewed additive queue installation pins one broker across this budget."""
+        e.require(e.sha(authority), 'Immutable coding authority digest required')
+        with self.tx(True) as db:
+            rows = db.execute("SELECT evidence FROM events WHERE kind='coding_authority_bound'").fetchall()
+            e.require(not rows or [e.decode(r[0]) for r in rows] == [dict(authority=authority)],
+                      'Shared budget is bound to another coding broker')
+            if not rows: self.event(db, 'coding_authority_bound', '', dict(authority=authority))
+            # Explicitly reviewed additive extension; no historical row is changed.
+            for table in ('metadata', 'events'):
+                for operation in ('UPDATE','DELETE'):
+                    db.execute(f"CREATE TRIGGER IF NOT EXISTS coding_immutable_{table}_{operation} BEFORE {operation} ON {table} BEGIN SELECT RAISE(ABORT,'Immutable accounting evidence'); END")
+            db.execute("CREATE TRIGGER IF NOT EXISTS coding_requests_delete BEFORE DELETE ON requests BEGIN SELECT RAISE(ABORT,'Immutable request identity'); END")
+            db.execute("CREATE TRIGGER IF NOT EXISTS coding_requests_identity BEFORE UPDATE OF id,binding,day,reserved ON requests BEGIN SELECT RAISE(ABORT,'Immutable reservation'); END")
+            db.execute("CREATE TRIGGER IF NOT EXISTS coding_requests_settlement BEFORE UPDATE OF actual,receipt ON requests WHEN OLD.actual IS NOT NULL BEGIN SELECT RAISE(ABORT,'Settlement already consumed'); END")
+
+    def check_coding_authority(self, authority, *, required=False):
+        with self.tx() as db:
+            rows = db.execute("SELECT evidence FROM events WHERE kind='coding_authority_bound'").fetchall()
+            e.require((bool(rows) or not required) and
+                      (not rows or [e.decode(r[0]) for r in rows] == [dict(authority=authority)]),
+                      'Shared coding broker authority mismatch')
+
     def reserve(self, ident, binding, maximum, *, provenance=None):
         e.require(e.sha(ident, 32) and e.sha(binding) and type(maximum) is int and maximum > 0,
                   'Invalid reservation')
         e.require(provenance is None or isinstance(provenance, dict) and
                   len(e.canonical(provenance)) <= 4096, 'Reservation provenance ceiling')
         with self.tx(True) as db:
+            if provenance and (provenance.get('binding') or {}).get('receiver') in {'live-coding-only','synthetic-coding-only'}:
+                authorities = db.execute("SELECT evidence FROM events WHERE kind='coding_authority_bound'").fetchall()
+                e.require(not authorities or [e.decode(v[0]) for v in authorities] ==
+                          [dict(authority=provenance['binding'].get('broker_authority'))], 'Shared coding authority mismatch')
             old = db.execute('SELECT * FROM requests WHERE id=?', (ident,)).fetchone()
             if old:
                 e.require(old['binding'] == binding and old['reserved'] == maximum and old['receipt'] is not None,
@@ -111,6 +138,69 @@ class Budget:
             db.execute('UPDATE requests SET actual=?,receipt=? WHERE id=?', (actual, e.canonical(receipt), ident))
             self.event(db, 'operator-reconciled' if evidence else 'settled', ident,
                        dict(actual_nano_usd=actual, evidence=evidence, receipt=receipt))
+
+    def _undispatched(self, db, ident, authority, execution):
+        """Absence of intent is authoritative only for the new bound controller."""
+        authorities = [e.decode(r[0]) for r in db.execute(
+            "SELECT evidence FROM events WHERE kind='coding_authority_bound'")]
+        e.require(authorities == [dict(authority=authority)], 'Bound coding authority required')
+        row = db.execute('SELECT * FROM requests WHERE id=?', (ident,)).fetchone()
+        if row is None:
+            e.require(not db.execute('SELECT 1 FROM events WHERE request=? LIMIT 1',(ident,)).fetchone(),
+                      'Orphan accounting evidence is indeterminate; never infer no dispatch')
+            return None
+        history = [dict(r) for r in db.execute('SELECT * FROM events WHERE request=? ORDER BY seq',(ident,))]
+        reservations = [e.decode(r['evidence']) for r in history if r['kind'] == 'reserved']
+        e.require(len(reservations) == 1, 'Original reservation evidence required')
+        binding = (reservations[0].get('provenance') or {}).get('binding') or {}
+        e.require(binding.get('broker_authority') == authority and binding.get('execution') == execution and
+                  binding.get('receiver') in {'live-coding-only','synthetic-coding-only'},
+                  'Legacy or unrelated reservations cannot use local no-dispatch recovery')
+        kinds = {r['kind'] for r in history}
+        failures = [e.decode(r['evidence']) for r in history if r['kind'] == 'request_failed_hold_retained']
+        e.require('response_observed_untrusted' not in kinds and
+                  ('dispatch_intent' not in kinds or failures and failures[-1]['dispatch'] == 'not_attempted'),
+                  'Provider dispatch may have occurred; external billing evidence required')
+        if row['actual'] is not None:
+            receipt = e.decode(row['receipt'])
+            e.require(row['actual'] == 0 and receipt.get('status') == 'released-before-dispatch',
+                      'Accounting is already terminal')
+        return dict(row)
+
+    def inspect_undispatched(self, ident, authority, execution):
+        with self.tx() as db: return self._undispatched(db, ident, authority, execution)
+
+    def release_undispatched(self, ident, authority, execution, evidence):
+        """Operator-reviewed reservation cancellation, never inferred from validation."""
+        e.require(e.sha(evidence), 'Retained local termination evidence digest required')
+        with self.tx(True) as db:
+            row = self._undispatched(db, ident, authority, execution)
+            if row is None: return None
+            if row['actual'] is not None: return e.decode(row['receipt'])  # Cross-ledger crash completion only.
+            receipt = dict(status='released-before-dispatch', execution=execution,
+                           authority=authority, evidence=evidence, retry=False)
+            db.execute('UPDATE requests SET actual=0,receipt=? WHERE id=?',(e.canonical(receipt),ident))
+            self.event(db,'reservation_released_before_dispatch',ident,receipt)
+        return receipt
+
+    def record_dispatch(self, ident):
+        """Commit once before transport; a crash leaves an uncertain reservation."""
+        with self.tx(True) as db:
+            r = db.execute('SELECT actual FROM requests WHERE id=?', (ident,)).fetchone()
+            e.require(r is not None and r['actual'] is None and not db.execute(
+                "SELECT 1 FROM events WHERE request=? AND kind='dispatch_intent'", (ident,)).fetchone(),
+                'Duplicate or settled provider dispatch')
+            self.event(db, 'dispatch_intent', ident, dict(retry=False))
+
+    def record_observation(self, ident, observation):
+        """Receiver-owned projection; deliberately cannot settle a reservation."""
+        e.require(isinstance(observation, dict) and observation.get('schema') == 'api-observation-v1'
+                  and observation.get('trusted') is False and len(e.canonical(observation)) < 4096,
+                  'Invalid receiver observation')
+        with self.tx(True) as db:
+            r = db.execute('SELECT actual FROM requests WHERE id=?', (ident,)).fetchone()
+            e.require(r is not None and r['actual'] is None, 'Unresolved request required')
+            self.event(db, 'response_observed_untrusted', ident, observation)
 
     def record_failure(self, ident, diagnostic):
         """Append only diagnostic evidence; never alter accounting or release holds."""

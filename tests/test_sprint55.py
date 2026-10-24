@@ -27,7 +27,7 @@ from app_operations import AppOperations, verify_installation
 class OperationalTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name); self.now = 1792670400
+        self.root = Path(self.temp.name).resolve(strict=True); self.now = 1792670400
         self.issuer = SyntheticIssuer()
 
     def broker(self, provider=None):

@@ -51,6 +51,19 @@ class ContractTests(unittest.TestCase):
             with self.subTest(comment=comment), self.assertRaises(ValueError):
                 self.apply('export function compile', comment+'export function compile')
 
+    def test_reviewed_replacements_cannot_add_shell_or_arbitrary_statements(self):
+        contract = dict(validation='throws-test-v1',symbols=['compile'],old='// anchor')
+        safe = "// anchor\ntest('missing exit', () => {\n  assert.throws(() => compile([\"S \"]));\n});"
+        c.safe_replacement(contract,safe)
+        for value in (safe+"\nprocess.exit(0);", safe.replace('compile(', 'eval('),
+                      safe.replace('["S "]','[process.env]'), safe.replace("'missing exit'","'x');evil('//")):
+            with self.assertRaises(ValueError): c.safe_replacement(contract,value)
+        arithmetic = dict(validation='numeric-expression-v1',symbols=['width','height'])
+        c.safe_replacement(arithmetic,'width * height + 1')
+        for value in ('process.exit(0)','width.constructor','width(height)','width++','width; height',
+                      'width ** height','width // height','/width/','width height','(width + height'):
+            with self.assertRaises(ValueError): c.safe_replacement(arithmetic,value)
+
     def test_source_file_and_contract_mismatch(self):
         for kwargs in (dict(source_manifest='0'*64), dict(allowed=[c.FILE, 'other.js'])):
             with self.assertRaises(ValueError):

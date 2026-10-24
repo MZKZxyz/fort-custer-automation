@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "groups": [
+    {
+      "purpose": "Retain every previously targeted optimized activation, observation, API and response-validation case",
+      "tests": ["test_catalog_activation", "test_live_observation", "test_observation_planning", "test_api_controller", "test_api_response_validation", "test_activation_readiness"]
+    },
+    {
+      "purpose": "Paid-profile validation, accounting provenance, restricted edits, peer identity and unavailable executor admission",
+      "tests": ["test_api_evidence", "test_coding_api", "test_coding_contract", "test_grant_broker", "test_codex_boundary", "test_fixture_paths"]
+    },
+    {
+      "purpose": "Legacy approval, spending, STOP, fencing, independent QA, publication separation and subscription boundaries",
+      "tests": ["test_safety", "test_execution", "test_sprint53", "test_sprint56.SubscriptionBoundaryTests", "test_local_catalog", "test_catalog_promotion", "test_catalog_publication"]
+    },
+    {
+      "purpose": "Controller authorization, source/policy freshness, shared budgets, uncertain-request recovery and independent real-source QA",
+      "tests": [
+        "test_durable_coding.DurableTests.test_restart_before_dispatch_and_duplicate_authorization",
+        "test_durable_coding.DurableTests.test_restart_after_provider_dispatch_keeps_hold_without_redispatch",
+        "test_durable_coding.DurableTests.test_stop_expired_policy_and_source_fail_closed",
+        "test_durable_coding.DurableTests.test_shared_historical_hold_blocks_without_grant_consumption",
+        "test_durable_coding.DurableTests.test_daily_and_lifetime_caps_across_queue_jobs",
+        "test_durable_coding.DurableTests.test_reconciliation_requires_complete_linked_external_evidence",
+        "test_durable_coding.DurableTests.test_independent_qa_failure_allows_fresh_authorization",
+        "test_durable_coding.DurableTests.test_crash_during_qa_needs_local_termination_proof",
+        "test_durable_coding.LegacyUpgradeTests",
+        "test_durable_coding.DurableTests.test_known_pre_dispatch_failure_releases_only_new_reservation",
+        "test_local_runner.LocalRunnerTests.test_pending_and_exact_approval",
+        "test_local_runner.LocalRunnerTests.test_expiry",
+        "test_local_runner.LocalRunnerTests.test_bound_issue_commit_prompt_and_policy",
+        "test_local_runner.LocalRunnerTests.test_kill_switch_persists_after_restart",
+        "test_local_runner.LocalRunnerTests.test_restart_retains_single_execution_hold",
+        "test_local_runner.LocalRunnerTests.test_api_environment_removed",
+        "test_local_runner.LocalRunnerTests.test_unexpected_files_symlink_and_failed_qa",
+        "test_local_runner.LocalRunnerTests.test_unsafe_scratch_and_repository_metadata",
+        "test_concurrency_coordinator.CoordinatorTests.test_unapproved_expired_and_advisory_rejected",
+        "test_concurrency_coordinator.CoordinatorTests.test_current_policy_digest_and_task_binding",
+        "test_concurrency_coordinator.CoordinatorTests.test_source_head_revision_conflict",
+        "test_concurrency_coordinator.CoordinatorTests.test_startup_rechecks_controller_authorization",
+        "test_concurrency_coordinator.CoordinatorTests.test_restart_no_automatic_reassign_and_expiry_hold",
+        "test_concurrency_coordinator.CoordinatorTests.test_recovery_consumes_identity_fencing_replay",
+        "test_concurrency_coordinator.CoordinatorTests.test_stop_broken_link_prevents_claims_and_requests_cancel",
+        "test_concurrency_coordinator.CoordinatorTests.test_stop_during_worker_and_termination_uncertainty",
+        "test_concurrency_coordinator.CoordinatorTests.test_independent_qa_rejects_worker_test_report_and_bad_code",
+        "test_concurrency_coordinator.CoordinatorTests.test_disabled_and_unsafe_configuration",
+        "test_concurrency_coordinator.CoordinatorTests.test_live_adapter_and_arbitrary_worker_rejected",
+        "test_local_publication.PublicationTests.test_missing_forged_and_coding_approval",
+        "test_local_publication.PublicationTests.test_expired",
+        "test_local_publication.PublicationTests.test_changed_artifacts_fail_closed",
+        "test_local_publication.PublicationTests.test_cancel_and_stop",
+        "test_local_publication.PublicationTests.test_credentials_require_explicit_selection",
+        "test_local_publication.PublicationTests.test_git_object_transport_checks_every_identity",
+        "test_sprint55.OperationalTests.test_readiness_even_removed_live_gate_cannot_self_activate",
+        "test_sprint55.OperationalTests.test_broker_bound_idempotence_expiry_and_revocation",
+        "test_sprint55.OperationalTests.test_broker_no_general_proxy_or_unbounded_requests",
+        "test_sprint55.OperationalTests.test_broker_crash_retains_durable_hold_and_blocks_retry",
+        "test_sprint55.OperationalTests.test_vm_forgery_cannot_provision",
+        "test_sprint55.OperationalTests.test_cleanup_uncertainty_is_never_success",
+        "test_sprint55.OperationalTests.test_app_identity_selection_and_role_separation"
+      ]
+    }
+  ]
+}

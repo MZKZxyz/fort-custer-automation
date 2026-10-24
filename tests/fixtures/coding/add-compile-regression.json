@@ -1,0 +1,11 @@
+{
+  "schema": "bounded-replacement-v1",
+  "path": "test/analyzer.test.js",
+  "old": "const result = rows => analyze(rows);",
+  "maximum_new_bytes": 1024,
+  "synthetic_new": "const result = rows => analyze(rows);\ntest('compile rejects a grid without an exit', () => {\n  assert.throws(() => compile([\"S \"]));\n});",
+  "validation": "throws-test-v1",
+  "symbols": [
+    "compile"
+  ]
+}

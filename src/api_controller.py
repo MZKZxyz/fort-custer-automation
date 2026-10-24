@@ -117,8 +117,11 @@ def _http_error(response):
 def _http_child(connection, credential_file, body):
     """Trusted controller helper only. Key never appears in argv/environment/results."""
     key, client, status = None, None, None
+    request_id = None
     phase, dispatch = 'local_request', 'not_attempted'
     def send(message):
+        if len(message) == 2 and request_id is not None:
+            message = (*message, dict(request_id=request_id))
         try: connection.send(message)
         except BaseException: pass  # Never leak an active sensitive exception via a broken IPC pipe.
     try:
@@ -155,6 +158,9 @@ def _http_child(connection, credential_file, body):
         phase = 'response_headers'
         response = client.getresponse()
         status = response.status
+        from src.api_evidence import identifier
+        request_id = identifier(response.getheader('x-request-id'), 'req_')
+        if request_id is not None and key in request_id: request_id = None
         e.require(type(status) is int and 100 <= status <= 599, 'Invalid status')
         dispatch = 'response_received'
         if status != 200:
@@ -166,7 +172,7 @@ def _http_child(connection, credential_file, body):
             raise APIUnavailable('response_too_large', phase, dispatch, status)
         if key.encode() in raw:
             raise APIUnavailable('credential_echo', phase, dispatch, status)
-        send(('ok', raw))
+        send(('ok', raw, dict(request_id=request_id)))
     except APIUnavailable as exc:
         send(('error', exc.diagnostic))
     except ssl.SSLCertVerificationError:
@@ -209,13 +215,21 @@ class ResponsesTransport:
             if not receiver.poll(DEADLINE):
                 raise APIUnavailable('helper_deadline')  # Lost phase evidence is always ambiguous.
             message = receiver.recv()
-            if not isinstance(message, tuple) or len(message) != 2:
+            if not isinstance(message, tuple) or len(message) not in (2, 3):
                 raise APIUnavailable('helper_protocol_invalid')
-            kind, result = message
+            kind, result = message[:2]
+            self.response_metadata = {}
+            if len(message) == 3:
+                from src.api_evidence import identifier
+                if not isinstance(message[2], dict) or set(message[2]) != {'request_id'}:
+                    raise APIUnavailable('helper_protocol_invalid')
+                self.response_metadata = dict(request_id=identifier(message[2]['request_id'], 'req_'))
             if kind == 'error':
                 try: d = validate_diagnostic(result)
                 except Exception: raise APIUnavailable('helper_protocol_invalid') from None
-                raise APIUnavailable(**d)
+                exc = APIUnavailable(**d)
+                exc.response_metadata = self.response_metadata
+                raise exc
             if kind != 'ok' or type(result) is not bytes:
                 raise APIUnavailable('helper_protocol_invalid')
             return result
@@ -508,7 +522,10 @@ class Controller:
 
     def _request(self, ident, request, binding, guard, *, _observation=False, _coding=False, _phase=None):
         # Internal finite progress markers only; never pass response data to a callback.
+        phase_value = None
         def phase(value):
+            nonlocal phase_value
+            phase_value = value
             if (_observation or _coding) and _phase is not None:
                 _phase(value)
         from src.coding_api import PRICING, visible_edit
@@ -539,13 +556,22 @@ class Controller:
         guard()  # Failure after reservation intentionally leaves durable hold.
         try:
             phase('provider_transport')
+            self.budget.record_dispatch(ident)
             raw = self.transport.send(e.canonical(request).encode())
+            from src.api_evidence import observe
+            self.budget.record_observation(ident, observe(raw, request, self.prices, binding,
+                getattr(self.transport, 'response_metadata', None)))
             phase('response_validation')
             result = receipt(raw, request, self.prices)
         except Exception as error:
             exc = error if isinstance(error, APIUnavailable) else APIUnavailable('transport_failure')
             exc.request_id = ident
             try:
+                if exc.diagnostic.get('http_status') is not None and phase_value != 'response_validation':
+                    from src.api_evidence import observe
+                    observation = observe(None, request, self.prices, binding, getattr(exc, 'response_metadata', None))
+                    observation['http_status'] = exc.diagnostic['http_status']
+                    self.budget.record_observation(ident, observation)
                 self.budget.record_failure(ident, exc.diagnostic)
                 exc.audit_recorded = True
             except Exception:

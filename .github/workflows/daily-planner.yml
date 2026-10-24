@@ -14,7 +14,7 @@ concurrency:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: write # ONLY the dedicated planning state branch is written
     steps:

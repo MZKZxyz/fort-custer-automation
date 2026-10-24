@@ -15,7 +15,7 @@ class ExecutionTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.path = Path(self.tmp.name)/'state.db'
+        self.path = Path(self.tmp.name).resolve(strict=True)/'state.db'
         self.now = 1792670400
         self.c = Controller(self.path, lambda: self.now)
         for i in range(8):
@@ -92,7 +92,7 @@ class ExecutionTests(unittest.TestCase):
         for cents in (None, 301, -1, True):
             with self.subTest(cents=cents):
                 with tempfile.TemporaryDirectory() as d:
-                    c=Controller(Path(d)/'db',lambda:self.now)
+                    c=Controller(Path(d).resolve(strict=True)/'db',lambda:self.now)
                     c.add('x','synthetic/client','main','x')
                     e=c.reserve('x','x'); c.dispatch(e,'human:sim'); MockWorker().run(c,e)
                     self.assertFalse(c.settle(e,'receipt',cents))
@@ -120,7 +120,7 @@ class ExecutionTests(unittest.TestCase):
         with self.assertRaises(ValueError): self.c.heartbeat(e,'coding:mock')
 
     def test_migration_preserves_legacy(self):
-        p=Path(self.tmp.name)/'legacy'
+        p=Path(self.tmp.name).resolve(strict=True)/'legacy'
         with sqlite3.connect(p) as db:
             db.execute('CREATE TABLE daily_plans(day TEXT PRIMARY KEY,report TEXT)')
             db.execute('INSERT INTO daily_plans VALUES (?,?)',('2026-10-22',json.dumps({'reserved_usd':9})))
@@ -160,7 +160,7 @@ class ExecutionTests(unittest.TestCase):
     def test_mock_disposable_checkout(self):
         import subprocess
         import shutil
-        root=Path(self.tmp.name)
+        root=Path(self.tmp.name).resolve(strict=True)
         source=root/'source'; source.mkdir()
         subprocess.run(['git','init',str(source)],check=True,capture_output=True)
         (source/'fixture.txt').write_text('fixture')
@@ -176,7 +176,7 @@ class ExecutionTests(unittest.TestCase):
     def test_real_sprint51_reservation_import(self):
         from planning import initialize, plan
         from orchestrator import ROOT, read_json
-        p=Path(self.tmp.name)/'sprint51.db'
+        p=Path(self.tmp.name).resolve(strict=True)/'sprint51.db'
         initialize(p)
         settings=read_json(ROOT/'config/settings.json')
         task=dict(id='synthetic/client#1',repo='synthetic/client',area='ui',priority=1,estimated_usd=1,risk='L0',depends_on=[])

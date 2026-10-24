@@ -324,8 +324,9 @@ class Runner:
             self.check(r)
             # A catalog identifier is single-use, including expired or failed tasks.
             # Retain the original record; no implicit restart or reauthorization.
-            if any(json.loads(row[0])['spec'].get('task_id') == task_id
-                   for row in db.execute('SELECT document FROM runs')):
+            if (spec['limits']['usage_policy'] not in {'supervised-sol-low-one-request', 'supervised-sol-low-reviewed-edit-v1'} and
+                any(json.loads(row[0])['spec'].get('task_id') == task_id
+                   for row in db.execute('SELECT document FROM runs'))):
                 raise ValueError('Catalog task already prepared; operator reconciliation required')
             self.save(db, r)
         return r
@@ -354,7 +355,7 @@ class Runner:
         block_live_dispatch()
         with self.tx() as db:
             r = self.read(db, run); files = self.check(r)
-            if r['spec'].get('limits', {}).get('usage_policy') == 'supervised-sol-low-one-request':
+            if r['spec'].get('limits', {}).get('usage_policy') in {'supervised-sol-low-one-request', 'supervised-sol-low-reviewed-edit-v1'}:
                 raise ValueError('Separate coding API admission required; no CLI fallback')
             if not self.policy['enabled']: raise ValueError('Local mode disabled')
             if r['state'] != 'approved': raise ValueError('Task already claimed or unapproved')
