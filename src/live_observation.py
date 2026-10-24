@@ -13,6 +13,7 @@ from src.grant_broker import Broker, PROTOCOL as SYNTHETIC
 from src.concurrency_coordinator import authorization, stopped
 from src.observation_planning import Planner, Decision, SCHEMA, observation_prompt
 from src.local_runner import terminal_challenge
+from src.observation_diagnostics import diagnostic, validate as validate_diagnostic
 
 PROTOCOL = 'grant-broker-v2-live-observation'
 
@@ -49,13 +50,20 @@ class ObservationBroker(Broker):
                       a['source_manifest'] == a['reviewed']['source_manifest'] and
                       a['maximum_nano_usd'] == api.maximum_charge(a['pricing'], api.OBSERVATION_OUTPUT),
                       'Invalid observation authorization')
-            rows[r['execution']] = dict(authorization=a, claim=c, state=None, events=[])
+            rows[r['execution']] = dict(authorization=a, claim=c, state=None, events=[], terminal_failure=None)
         last = None
         for r in db.execute('SELECT * FROM events ORDER BY seq'):
             e.require(r['execution'] in rows and e.finite(r['at']) and
                       (last is None or last <= r['at']), 'Invalid observation chronology')
             last = r['at']; row = rows[r['execution']]; d = e.decode(r['document'])
             state = r['state']
+            if state == 'diagnostic':
+                e.require(row['state'] in {'dispatched', 'revoked'} and
+                          any(event['state'] == 'dispatched' for event in row['events']) and
+                          row['terminal_failure'] is None, 'Invalid observation diagnostic transition')
+                row['terminal_failure'] = validate_diagnostic(d)
+                row['events'].append(dict(at=r['at'], state=state, diagnostic=row['terminal_failure']))
+                continue
             e.require((state == 'authorized' and row['state'] is None or
                        state == 'dispatched' and row['state'] == 'authorized' or
                        state == 'revoked' and row['state'] in {'authorized', 'dispatched'}) and
@@ -132,6 +140,20 @@ class ObservationBroker(Broker):
         return dict(schema=PROTOCOL, stop=stopped(self.c), enabled=self.c['enabled'],
                     tasks=rows, coding=False, publication=False)
 
+    def record_failure(self, claim, phase):
+        """One append-only diagnostic; never changes authority or accounting.
+
+        Do not revalidate freshness here: STOP, expiry and source changes are
+        precisely failures that must remain diagnosable after dispatch.
+        """
+        value = diagnostic(phase)
+        with self.tx(True) as db:
+            row = self._owned(db, claim, {'dispatched', 'revoked'})
+            e.require(any(event['state'] == 'dispatched' for event in row['events']),
+                      'Diagnostic requires consumed observation')
+            if row['terminal_failure'] is None:
+                self._event(db, claim, 'diagnostic', value)
+
     def claim_synthetic(self, *args, **kwargs):
         raise ValueError('Observation grants cannot authorize workers')
 
@@ -170,9 +192,36 @@ class LivePlanner(Planner):
         claim = e.decode(e.canonical(claim))
         provenance, binding, request, guard = self._bound(broker, claim, principal)
         broker.admit(claim, principal)  # Durable single-use intent precedes budget/network.
-        classification = self.controller._request(provenance.request_id, request, binding, guard, _observation=True)
-        guard()
-        return Decision(SCHEMA, provenance, classification)
+        phase = 'internal'
+        def progress(value):
+            nonlocal phase
+            phase = diagnostic(value)['phase']
+        try:
+            classification = self.controller._request(provenance.request_id, request, binding, guard,
+                                                       _observation=True, _phase=progress)
+            phase = 'final_verification'
+            guard()
+            decision = Decision(SCHEMA, provenance, classification)
+            return self.verify(decision, broker, claim, principal)
+        except Exception:
+            self._failure(broker, claim, phase)
+            raise
+
+    @staticmethod
+    def _failure(broker, claim, phase):
+        try:
+            broker.record_failure(claim, phase)
+        except Exception:
+            # Storage failure cannot authorize redispatch, undo settlement or
+            # replace the safe CLI failure with sensitive exception output.
+            pass
+
+    def verify(self, decision, broker, claim, principal):
+        try:
+            return super().verify(decision, broker, claim, principal)
+        except Exception:
+            self._failure(broker, claim, 'final_verification')
+            raise
 
 
 def main():
@@ -210,6 +259,7 @@ def main():
                 rows = broker.inspect()
                 result = dict(schema=PROTOCOL, enabled=rows['enabled'], stop=rows['stop'], tasks=[
                     dict(execution=k, task=r['claim']['task'], state=r['state'], events=r['events'],
+                         terminal_failure=r['terminal_failure'],
                          authorization=e.digest(r['authorization'])) for k,r in rows['tasks'].items()])
             elif args.command == 'revoke':
                 rows = broker.inspect()['tasks']
@@ -229,11 +279,15 @@ def main():
                               'Current controller OS principal required')
                     planner = LivePlanner(api.Controller(budget, api.ResponsesTransport(c['credential_file']), prices))
                     decision = planner.observe(broker, claim, args.principal)
-                    with budget.tx() as db:
-                        receipt = e.decode(db.execute('SELECT receipt FROM requests WHERE id=?',
-                                          (decision.provenance.request_id,)).fetchone()[0])
-                    planner.verify(decision, broker, claim, args.principal)
-                    result = dict(decision=asdict(decision), receipt=receipt)
+                    try:
+                        with budget.tx() as db:
+                            receipt = e.decode(db.execute('SELECT receipt FROM requests WHERE id=?',
+                                              (decision.provenance.request_id,)).fetchone()[0])
+                        planner.verify(decision, broker, claim, args.principal)
+                        result = dict(decision=asdict(decision), receipt=receipt)
+                    except Exception:
+                        planner._failure(broker, claim, 'final_verification')
+                        raise
         print(e.canonical(result)); return 0
     except Exception:
         print(e.canonical(dict(status='blocked-or-unknown', retry=False,
@@ -243,3 +297,4 @@ def main():
 
 if __name__ == '__main__':
     raise SystemExit(main())
+

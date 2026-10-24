@@ -184,3 +184,31 @@ and ledgers. Existing synthetic adversarial parser/accounting tests remain. The
 Linux/macOS broker workflow explicitly runs the live integration tests in normal
 and optimized Python; full regression workflows discover them too. Exact results
 are recorded in [Sprint evidence](SPRINT-6.13B-EVIDENCE.md).
+
+### Sanitized terminal diagnostics (Sprint 6.13D)
+
+The observation `audit` command includes `terminal_failure` (null when no failure
+was recorded). A dispatched observation can have one append-only diagnostic
+event, containing only a predefined category and phase:
+
+| Category | Phase |
+| --- | --- |
+| `provider_transport_or_validation_failure` | `provider_transport` or `response_validation` |
+| `authorization_revalidation_failure` | `post_settlement_authorization` |
+| `classification_failure` | `classification` |
+| `decision_verification_failure` | `final_verification` |
+| `unexpected_internal_failure` | `internal` or `settlement` |
+
+Diagnostics do not contain exception messages, provider text, prompts, credentials,
+claims, or request IDs. They do not change the dispatched/revoked state. STOP,
+expiration, source freshness and provenance checks still block delivery, including
+after successful settlement. Classification failure also leaves a valid settlement
+intact. Unsettled holds require the existing controller reconciliation process.
+The CLI still returns `blocked-or-unknown` with `retry=false`.
+
+Audit works without API credentials or private database inspection. Existing
+dispatched rows without a diagnostic remain readable; absence is not evidence of
+success and never permits retry. Abrupt process termination or unavailable ledger
+storage can prevent diagnostic persistence. These conditions still consume the
+authorization and never release a budget hold or authorize another request.
+

@@ -470,7 +470,11 @@ class Controller:
         self.budget, self.transport = budget, transport
         self.prices = pricing(DEFAULT_PRICING if prices is None else prices)
 
-    def _request(self, ident, request, binding, guard, *, _observation=False):
+    def _request(self, ident, request, binding, guard, *, _observation=False, _phase=None):
+        # Internal finite progress markers only; never pass response data to a callback.
+        def phase(value):
+            if _observation and _phase is not None:
+                _phase(value)
         e.require(type(_observation) is bool and (not _observation or
                   getattr(self.transport, 'synthetic', False) is True and
                   binding.get('receiver') == 'synthetic-observation-only' or
@@ -488,7 +492,9 @@ class Controller:
             return old
         guard()  # Failure after reservation intentionally leaves durable hold.
         try:
+            phase('provider_transport')
             raw = self.transport.send(e.canonical(request).encode())
+            phase('response_validation')
             result = receipt(raw, request, self.prices)
         except Exception as error:
             exc = error if isinstance(error, APIUnavailable) else APIUnavailable('transport_failure')
@@ -500,12 +506,16 @@ class Controller:
                 pass  # Diagnostic-write failure cannot release a hold or trigger another request.
             raise exc from None
         # Reconcile billing even if STOP arrives while inference is in flight.
+        phase('settlement')
         self.budget.settle(ident, result['estimated_cost_nano_usd'], result)
+        phase('post_settlement_authorization')
         guard()  # Never deliver model output on revoked/expired/source-changed grant.
         if _observation:
             # A fixed internal boundary, never a raw-response callback/passthrough.
             from src.observation_planning import _classification
+            phase('classification')
             classification = _classification(raw)
+            phase('post_settlement_authorization')
             guard()
             return classification
         return result
@@ -601,4 +611,5 @@ def main():
 
 if __name__ == '__main__':
     raise SystemExit(main())
+
 
