@@ -1,0 +1,58 @@
+name: Fort Custer Project board synchronization
+on:
+  pull_request:
+    paths:
+      - .github/workflows/project-board-sync.yml
+      - src/project_status_sync.py
+      - tests/test_project_status_sync.py
+      - docs/PROJECT-BOARD-SYNC.md
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview changes without writing to GitHub Projects'
+        type: boolean
+        required: true
+        default: true
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: fc-project-board-sync
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run isolated offline contract tests
+        run: python -m unittest tests.test_project_status_sync -v
+  sync:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Sync Project item membership and Status
+        env:
+          PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_NUMBER: '1'
+          PROJECTS_SYNC_TOKEN: ${{ secrets.FORT_CUSTER_PROJECTS_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "${DRY_RUN}" == "true" ]]; then args+=(--dry-run); fi
+          python -m src.project_status_sync "${args[@]}"
