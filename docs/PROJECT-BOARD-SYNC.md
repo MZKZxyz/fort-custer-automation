@@ -74,7 +74,7 @@ requires the same read-capable project token.
 ## Safety, testing, and rollback
 
 - Tests run locally and on PR without secrets:
-  `python -m unittest tests.test_project_status_sync -v`.
+  `python -m unittest discover -s tests -p 'test_project_status_sync.py' -v`.
 - Pull requests do not execute a token-privileged synchronization job.
   Only default-branch manual and scheduled runs can write Project data.
 - All pages of current board items and both repos' open issues and PRs are
