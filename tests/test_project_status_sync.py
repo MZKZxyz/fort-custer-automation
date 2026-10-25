@@ -7,7 +7,7 @@ from src.project_status_sync import (
 )
 
 REPO = "owner/fort-custer-client"
-FIELD = {"id": "STATUS", "options": [
+FIELD = {"id": "STATUS", "name": "Status", "options": [
     {"id": "T", "name": "Todo"},
     {"id": "I", "name": "In Progress"},
     {"id": "D", "name": "Done"},
