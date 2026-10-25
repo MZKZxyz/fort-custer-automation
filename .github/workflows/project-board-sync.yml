@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Run isolated offline contract tests
-        run: python -m unittest tests.test_project_status_sync -v
+        run: python -m unittest discover -s tests -p 'test_project_status_sync.py' -v
   sync:
     needs: test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
