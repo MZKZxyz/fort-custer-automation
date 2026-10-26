@@ -413,3 +413,5 @@ The [existing-Mac catalog activation runbook](docs/CATALOG-ACTIVATION.md) establ
 one independently reviewed task in separate state without migrating legacy policy
 or approvals. Its read-only helper checks prerequisites before ledger creation;
 installation stops at Sprint 6.13B observation review, with no inference or coding.
+
+Durable supervised coding queue, additive ledger upgrade and evidence-based recovery: [operator workflow](docs/DURABLE-CODING.md).

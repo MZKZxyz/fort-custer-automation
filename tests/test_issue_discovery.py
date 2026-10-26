@@ -60,7 +60,8 @@ class DiscoveryTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        # Canonicalize only our newly created fixture root (macOS /var is a symlink).
+        self.root = Path(self.temp.name).resolve(strict=True)
         self.store = discovery.Store(self.root/'discovery.sqlite')
         self.store.initialize()
         self.config = dict(schema='discovery-config-v1', repositories=[SERVER,CLIENT],

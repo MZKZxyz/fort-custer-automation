@@ -29,7 +29,8 @@ class Fixture:
     def __init__(self, count=3):
         self.fixtures = []
         self.tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self.tmp.name); self.root.chmod(0o700)
+        # Canonicalize only our newly created fixture root (macOS /var is a symlink).
+        self.root = Path(self.tmp.name).resolve(strict=True); self.root.chmod(0o700)
         self.config = dict(schema=c.PROTOCOL, enabled=True, slots=3, live_limit=1, mode='synthetic-only',
             ledger=str(self.root/'coordinator.sqlite'), scratch=str(self.root/'scratch'), stop_files=[],
             max_tasks=100, max_artifact_bytes=1024*1024, max_storage_bytes=16*1024*1024)

@@ -292,7 +292,7 @@ class EnvelopeReviewTests(unittest.TestCase):
             with b.tx() as db:
                 row=dict(db.execute('SELECT * FROM requests').fetchone())
                 self.assertIsNone(row['actual']);self.assertIsNone(row['receipt'])
-            self.assertEqual([x['kind'] for x in b.audit()],['reserved','request_failed_hold_retained'])
+            self.assertEqual([x['kind'] for x in b.audit()],['reserved','dispatch_intent','response_observed_untrusted','request_failed_hold_retained'])
             self.assertEqual(json.loads(b.audit()[-1]['evidence'])['validation_section'],'usage')
             self.assertNotIn('unrecognized_fields',json.loads(b.audit()[-1]['evidence']))
             self.assertNotIn('SYNTHETIC_',e.canonical(b.audit()))
@@ -345,7 +345,7 @@ class ValidationEvidenceTests(unittest.TestCase):
             with b.tx() as db:
                 row=dict(db.execute('SELECT * FROM requests').fetchone())
                 self.assertIsNone(row['actual']);self.assertIsNone(row['receipt'])
-            events=b.audit();self.assertEqual([x['kind'] for x in events],['reserved','request_failed_hold_retained'])
+            events=b.audit();self.assertEqual([x['kind'] for x in events],['reserved','dispatch_intent','response_observed_untrusted','request_failed_hold_retained'])
             evidence=json.loads(events[-1]['evidence'])
             self.assertEqual(evidence['validation_section'],'cached_tokens')
             self.assertEqual(evidence['validation_rule'],'cache_write_not_priced')
@@ -409,7 +409,7 @@ class ProjectionTests(unittest.TestCase):
             execute.assert_not_called();fake.send.assert_called_once()
             self.assertEqual(b.status()['unresolved_requests'],0)
             self.assertEqual(b.status()['lifetime_encumbered_nano_usd'],0)
-            self.assertEqual([x['kind'] for x in b.audit()],['reserved','settled'])
+            self.assertEqual([x['kind'] for x in b.audit()],['reserved','dispatch_intent','response_observed_untrusted','settled'])
             for artifact in (e.canonical(result),e.canonical(b.audit()),b.path.read_bytes().decode('latin1')):
                 self.assertNotIn('SYNTHETIC_',artifact)
                 self.assertNotIn('Ignore all approvals',artifact)

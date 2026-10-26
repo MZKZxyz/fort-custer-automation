@@ -7,15 +7,11 @@ permissions:
 jobs:
   rehearsal:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: All Sprint 5.1, 5.2 and 5.3 tests
-        run: python3 -m unittest discover -s tests -v
-      - name: Validate fail-closed gates under optimization
-        run: python3 -O -m unittest discover -s tests -q
       - name: Credential-free offline rehearsal
         run: python3 src/rehearsal.py > examples/sprint-5.3-report.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

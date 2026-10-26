@@ -285,7 +285,7 @@ class ProcessEndpoint:
     def __init__(self, path, source, allowed):
         self.path = str(path)
         self.work = tempfile.TemporaryDirectory()
-        root = Path(self.work.name)
+        root = Path(self.work.name).resolve(strict=True)
         for name in allowed:
             target = root/name; target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((Path(source)/name).read_bytes()); target.chmod(0o644)
@@ -322,7 +322,7 @@ class TransportTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(); self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name); self.root.chmod(0o700)
+        self.root = Path(self.tmp.name).resolve(strict=True); self.root.chmod(0o700)
     def endpoint(self, transform):
         ep = Endpoint(self.root/'worker.sock', transform); self.addCleanup(ep.close); return ep
     def exchange(self, ep, seconds=1): return t.exchange(ep.path, b'fixture', os.getuid(), seconds)

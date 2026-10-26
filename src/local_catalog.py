@@ -38,7 +38,7 @@ def resolve(policy, task_id, *, observation_only=False):
     entry = catalog['tasks'].get(task_id)
     required = {'repo', 'repository', 'source', 'input_hash', 'issue', 'issue_snapshot',
                 'allowed', 'instructions', 'checks', 'limits', 'mode', 'approval'}
-    if not isinstance(entry, dict) or set(entry) != required:
+    if not isinstance(entry, dict) or set(entry) not in (required, required | {'edit_contract'}):
         raise ValueError('Unknown or unsupported reviewed task')
     repo = entry['repo']
     if not isinstance(repo, str) or repo not in REPOSITORIES or repo not in policy['repositories']:
@@ -74,7 +74,7 @@ def resolve(policy, task_id, *, observation_only=False):
         not 0 < limits['timeout_seconds'] <= policy['timeout_seconds'] or
         type(limits['api_spend_cents']) is not int):
         raise ValueError('Unsupported task resource or spending limits')
-    if limits['usage_policy'] != 'supervised-sol-low-one-request' and (
+    if limits['usage_policy'] not in {'supervised-sol-low-one-request', 'supervised-sol-low-reviewed-edit-v1'} and (
         limits['api_spend_cents'] != 0 or limits['usage_policy'] != 'subscription-no-paid-refills'):
         raise ValueError('Unsupported task resource or spending limits')
     files = source_files(p['source'], entry['source'], allowed)
@@ -99,9 +99,11 @@ def resolve(policy, task_id, *, observation_only=False):
             type(check['timeout_seconds']) is not int or
             not 0 < check['timeout_seconds'] <= limits['timeout_seconds']):
             raise ValueError('QA command not allowlisted')
-    if limits['usage_policy'] == 'supervised-sol-low-one-request':
+    if limits['usage_policy'] in {'supervised-sol-low-one-request', 'supervised-sol-low-reviewed-edit-v1'}:
         from src.coding_contract import catalog_task
         catalog_task(entry)
+    elif 'edit_contract' in entry:
+        raise ValueError('Paid edit contract requires dedicated authorization')
     spec = dict(protocol=PROTOCOL, task_id=task_id, task=entry, mode=MODE,
                 repo=repo, issue=number, issue_snapshot=issue, branch=p['branch'],
                 source=entry['source'],
